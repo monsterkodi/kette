@@ -1,0 +1,8 @@
+name          belt
+version       1.0.0
+description   belch
+main          js/main.js
+author        monsterkodi
+license       Unlicense
+dependencies
+              kxk  ^0.404.0
