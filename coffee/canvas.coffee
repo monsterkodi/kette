@@ -136,8 +136,6 @@ class Canvas
             
             @zoom.center.sub newPos.minus worldPos
             
-            # klog worldPos
-                         
     # 0000000   0000000    0000000   00     00  
     #    000   000   000  000   000  000   000  
     #   000    000   000  000   000  000000000  

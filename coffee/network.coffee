@@ -6,7 +6,7 @@
 000   000  00000000     000     00     00   0000000   000   000  000   000  
 ###
 
-{ kpos, kstr, last } = require 'kxk'
+{ kpos, kstr } = require 'kxk'
 { lpad, rpad, pad } = kstr
 { max, min } = Math
 
@@ -27,36 +27,40 @@ class Network
         
         @init()
 
-    init1: ->
-        
-        belt = new Belt 1, kpos(-10,0), kpos(0,0)
-        @belts.push belt
-
-        belt1 = new Belt 1, kpos(0,0), kpos(5,0)
-        @belts.push belt1
-        
-        @connect belt, belt1
-        
-        belt2 = new Belt 1, kpos(5,0), kpos(10,0)
-        @belts.push belt2
-        
-        @connect belt1, belt2
-        
     init: ->
         
-        belt = new Belt 1, kpos(-10,0), kpos(0,0)
-        @belts.push belt
+        belt0 = @addBelt 1, kpos(-10,0), kpos(0,0)
 
-        belt1 = new Belt 1, kpos(0,0), kpos(10,0)
-        @belts.push belt1
+        belt1 = @addBelt 1, kpos(0,0), kpos(10,0)
         
-        @connect belt, belt1
+        @connect belt0, belt1
         
-        belt2 = new Belt 1, kpos(10,0), kpos(10,-10)
-        @belts.push belt2
+        belt2 = @addBelt 1, kpos(10,0), kpos(10,-10)
         
         @connect belt1, belt2
-                
+        
+        belt3 = @addBelt 1, kpos(10,-10), kpos(0,-10)
+        
+        @connect belt2, belt3
+        
+        belt4 = @addBelt 1, kpos(0,-10), kpos(0,0)
+        
+        @connect belt3, belt4
+        
+        @nodes[0].addInp belt4
+        belt4.out = @nodes[0]
+        
+        belt5 = @addBelt 1, kpos(0,0), kpos(0,10)
+        
+        @nodes[0].addOut belt5
+        belt5.inp = @nodes[0]
+        
+    addBelt: (speed, p1, p2) ->
+        
+        belt = new Belt speed, p1, p2
+        @belts.push belt
+        belt
+        
     connect: (belt1, belt2) ->
         
         node = new Node 
@@ -76,11 +80,6 @@ class Network
             
             belt.add item
                 
-    run: ->
-        
-        for @step in 1..100
-            @nextStep()
-                
     #  0000000  000000000  00000000  00000000   
     # 000          000     000       000   000  
     # 0000000      000     0000000   00000000   
@@ -90,28 +89,7 @@ class Network
     nextStep: ->
         
         @newItemOnBelt @belts[0]
-            
-        if @step == 1
-            last = @belts[-1]
-            belt = new Belt 1, kpos(10,-10), kpos(0,-10)
-            @belts.push belt
-            @connect last, belt
-            
-            belt2 = new Belt 1, kpos(0,-10), kpos(0,0)
-            @belts.push belt2
-            @connect belt, belt2
-            
-            @nodes[0].addInp belt2
-            belt2.out = @nodes[0]
-            
-        if @step == 1
-            
-            belt = new Belt 1, kpos(0,0), kpos(0,10)
-            @belts.push belt
-            
-            @nodes[0].addOut belt
-            belt.inp = @nodes[0]
-        
+                    
         @epoch += @epoch_incr
         
         for belt in @belts
