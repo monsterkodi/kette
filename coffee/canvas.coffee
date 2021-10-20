@@ -6,7 +6,7 @@
  0000000  000   000  000   000      0      000   000  0000000     
 ###
 
-{ clamp, drag, elem, kpos, post, stash } = require 'kxk'
+{ clamp, drag, elem, klog, kpos, post, stash } = require 'kxk'
 { abs } = Math
 
 class Canvas
@@ -14,10 +14,10 @@ class Canvas
     @: (@parent, @network) ->
         
         @zoom = 
-            value:          1.0       # current zoom value
-            max:            50        # maximum value of magnification
-            min:            0.01      # minimum value of minification
-            viewCenter:     kpos 0 0
+            value:  1.0       # current zoom value
+            max:    50        # maximum value of magnification
+            min:    0.01      # minimum value of minification
+            center: kpos 0 0
         
         @div = elem class:"graphDiv" parent:@parent
         
@@ -106,13 +106,9 @@ class Canvas
             @mousePos.x -= 2
             @mousePos.y -= 4
     
-            if not event.buttons # if button is pressed, 
-                @redraw()        # redraw will be done in onDragMove
-
     onMouseLeave: (event) =>
         
         delete @mousePos
-        @redraw()
 
     # 000   000  000   000  00000000  00000000  000      
     # 000 0 000  000   000  000       000       000      
@@ -122,13 +118,25 @@ class Canvas
     
     onWheel: (event) =>
         
-        eventPos = @posForEvent event
+        viewPos = @posForEvent event
         scaleFactor = 1 - event.deltaY / 600.0
         newZoom = clamp @zoom.min, @zoom.max, @zoom.value * scaleFactor
              
         if @zoom.value != newZoom
                  
-            @zoomAtViewPos newZoom, eventPos
+            worldPos = viewPos.minus kpos @width/4, @height/4
+            worldPos.scale 2/@zoom.value
+            worldPos.add @zoom.center
+            
+            @zoom.value = newZoom
+
+            newPos = viewPos.minus kpos @width/4, @height/4
+            newPos.scale 2/@zoom.value
+            newPos.add @zoom.center
+            
+            @zoom.center.sub newPos.minus worldPos
+            
+            # klog worldPos
                          
     # 0000000   0000000    0000000   00     00  
     #    000   000   000  000   000  000   000  
@@ -136,33 +144,17 @@ class Canvas
     #  000     000   000  000   000  000 0 000  
     # 0000000   0000000    0000000   000   000  
     
-    zoomAtViewPos: (newZoom, viewPos) ->
-           
-        center = viewPos.times 2
-        ref = kpos 0 0
-        @zoom.viewCenter.add (ref.plus (center.minus ref).scale newZoom / @zoom.value).sub center
-        
-        @setZoomScale newZoom
-                
-    setZoomScale: (newZoom) ->
-
-        @zoom.value = newZoom
-        
-        x = parseInt -@width/4 - @zoom.viewCenter.x
-        y = parseInt -@height/4 - @zoom.viewCenter.y
-        @canvas.style.transform = "translate3d(#{x}px, #{y}px, 0px) scale3d(#{@zoom.value/2}, #{@zoom.value/2}, 1)"
-        
     moveByViewDelta: (delta) -> 
     
-        @zoom.viewCenter.sub delta.times 2
-        @setZoomScale @zoom.value
+        @zoom.center.sub delta.times 2/@zoom.value
+        
+        klog 'zoom.center' @zoom.center
     
     resetZoom: =>
         
         @zoom.value = 1
-        @zoom.viewCenter.x = 0
-        @zoom.viewCenter.y = @height
-        @zoomAtViewPos @zoom.value, kpos 0.5 0.5
+        @zoom.center.x = 0
+        @zoom.center.y = 0
         
     # 00000000   00000000   0000000  000  0000000  00000000  
     # 000   000  000       000       000     000   000       
@@ -170,10 +162,7 @@ class Canvas
     # 000   000  000            000  000   000     000       
     # 000   000  00000000  0000000   000  0000000  00000000  
     
-    onResize: =>
-        
-        @initCanvas()        
-        @redraw()
+    onResize: => @initCanvas()        
     
     #  0000000   000   000  000  00     00   0000000   000000000  000   0000000   000   000  
     # 000   000  0000  000  000  000   000  000   000     000     000  000   000  0000  000  
@@ -181,13 +170,10 @@ class Canvas
     # 000   000  000  0000  000  000 0 000  000   000     000     000  000   000  000  0000  
     # 000   000  000   000  000  000   000  000   000     000     000   0000000   000   000  
     
-    redraw: -> @dirty = true
-    
     onAnimationFrame: =>
 
         @clear()
         @draw()
-        @dirty = false
             
     # 0000000    00000000    0000000   000   000  
     # 000   000  000   000  000   000  000 0 000  
@@ -196,20 +182,23 @@ class Canvas
     # 0000000    000   000  000   000  00     00  
     
     draw: ->
+        
         @ctx.strokeStyle = '#8888'
         @ctx.lineWidth = 0
         
-        sz = 70
+        sz = 100 * @zoom.value
+        xo = @width/2-@zoom.center.x*@zoom.value
+        yo = @height/2-@zoom.center.y*@zoom.value
         
         @ctx.beginPath()
         for belt in @network.belts
-            @ctx.moveTo @width/2+belt.p1.x*sz, @height/2+belt.p1.y*sz
-            @ctx.lineTo @width/2+belt.p2.x*sz, @height/2+belt.p2.y*sz
+            @ctx.moveTo xo+belt.p1.x*sz, yo+belt.p1.y*sz
+            @ctx.lineTo xo+belt.p2.x*sz, yo+belt.p2.y*sz
         @ctx.stroke()
         
         @ctx.fillStyle = '#8888'
         for belt in @network.belts
-            @ctx.fillRect @width/2+belt.p1.x*sz-10, @height/2+belt.p1.y*sz-10, 20, 20
+            @ctx.fillRect xo+belt.p1.x*sz-sz/4, yo+belt.p1.y*sz-sz/4, sz/2, sz/2
             
         for belt in @network.belts
             item = belt.head
@@ -217,7 +206,7 @@ class Canvas
                 @ctx.fillStyle = item.color
                 p = belt.p1.plus belt.p1.to(belt.p2).times(item.pos/belt.length)
                 
-                @ctx.fillRect @width/2+p.x*sz-sz/2, @height/2+p.y*sz-sz/2, sz, sz
+                @ctx.fillRect xo+p.x*sz-sz/2, yo+p.y*sz-sz/2, sz, sz
                 item = item.prev
                 
     #  0000000  000000000   0000000    0000000  000   000  
