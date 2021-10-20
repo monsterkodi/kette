@@ -6,152 +6,113 @@
 000   000  000   000  000  000   000
 ###
 
-{ kstr } = require 'kxk'
-{ lpad, rpad, pad } = kstr
-{ max, min } = Math
+{ app, empty, filelist, fs, post, slash, win } = require 'kxk'
+{ BrowserWindow } = require 'electron'
+{ abs } = Math
 
-class Main
+wins = -> BrowserWindow.getAllWindows().sort (a,b) -> a.id - b.id
 
-    @: -> 
-        
-        @step  = 0
-        @epoch = 0.0
-        @belts = []
-        @items = []
-        @nodes = []
-    
-    init: ->
-        
-        belt = new Belt @epoch, 10, 0.88
-        @belts.push belt
+class Main extends app
 
-        @newItemOnBelt belt
-        
-        belt2 = new Belt @epoch, 5, 0.5
-        @belts.push belt2
-        
-        @connect belt, belt2
-        
-        @dump()
-        
-    connect: (belt1, belt2) ->
-        
-        node = new Node 
-        @nodes.push node
-        node.addInp belt1
-        node.addOut belt2
-        belt1.out = node
-        belt2.inp = node
-        
-    newItemOnBelt: (belt) ->
-        
-        item = new Item belt
-        @items.push item
-        
-        belt.add item
-                
-    run: ->
-        
-        @epoch_incr = 0.2
-        
-        for @step in 1..200
-                
-            if @step == 40 or @step == 80
-                @newItemOnBelt @belts[0]
-            
-            @epoch += @epoch_incr
-            for belt in @belts
-                belt.advance @epoch_incr
-                
-            for node in @nodes
-                node.process()
-                
-            @dump()
-                    
-    dump: ->
-        
-        str = "#{lpad @step, 3} #{lpad @epoch.toFixed(1), 4}"
-        
-        for belt in @belts
-            its = ''
-            item = belt.head
-            while item
-                its += "#{lpad item.pos.toFixed(2), 6} "
-                item = item.prev
-            str += " #{@belts.indexOf(belt)}:[#{its}]"
-        
-        log str
-
-class Item
-    
     @: ->
-    
-        @pos  = 0.0
-        @prev = null
-    
-class Belt
-    
-    @: (@epoch, @length, @speed=1) ->
-        
-        @head   = null
-        @tail   = null
-        
-        @inp    = null
-        @out    = null
-        
-    advance: (epoch_incr) ->
-        
-        if @head
-            headRoom = @length - @head.pos
-            headMove = max 0 min @speed * epoch_incr, headRoom
-            @head.pos += headMove
-            
-            item = @head
-            while prev = item.prev
-                itemRoom = item.pos - prev.pos - 1
-                prevMove = max 0 min @speed * epoch_incr, itemRoom
-                prev.pos += prevMove
-                item = prev
                 
-    add: (item) ->
+        super
+            dir:            __dirname
+            pkg:            require '../package.json'
+            dirs:           ['../pug' '../styl'] # watch pug and styl
+            index:          'index.html'
+            icon:           '../img/app.ico'
+            about:          '../img/about.png'
+            prefsSeperator: '▸'
+            width:          1024
+            height:         768
+            minWidth:       300
+            minHeight:      300
+            
+        @opt.onQuit = @quit
+        @opt.onShow = @onShow
+        # args.watch  = true
+        # args.devtools = true
+
+        @app.on 'window-all-closed' (event) => @exitApp()
         
-        item.pos = 0.0
-        item.prev = null
-        if not @head
-            @head = item
-        if @tail
-            @tail.prev = item
-        @tail = item
+        @moveWindowStashes()
+        post.on 'menuAction' @onMenuAction
         
-    pop: ->
-        
-        item = @head
-        
-        @head = item.prev
-        if not @head then @tail = null
-        
-        item
-        
-class Node
+    onShow: => @restoreWindows()
+    hideDock: -> 
+                
+    #  0000000   000   000  000  000000000  
+    # 000   000  000   000  000     000     
+    # 000 00 00  000   000  000     000     
+    # 000 0000   000   000  000     000     
+    #  00000 00   0000000   000     000     
     
-    @: ->
+    quit: =>
+
+        toSave = wins().length
+
+        if toSave
+            post.toWins 'saveStash'
+            post.on 'stashSaved' =>
+                toSave -= 1
+                if toSave == 0
+                    @exitApp()
+            'delay'
         
-        @inp = []
-        @out = []
+    # 00000000   00000000   0000000  000000000   0000000   00000000   00000000
+    # 000   000  000       000          000     000   000  000   000  000
+    # 0000000    0000000   0000000      000     000   000  0000000    0000000
+    # 000   000  000            000     000     000   000  000   000  000
+    # 000   000  00000000  0000000      000      0000000   000   000  00000000
+
+    moveWindowStashes: ->
         
-    addInp: (belt) -> @inp.push belt
-    addOut: (belt) -> @out.push belt
+        winDir = slash.join @userData, 'win'
+        oldDir = slash.join @userData, 'old'
+        if slash.dirExists winDir
+            fs.moveSync winDir, oldDir, overwrite: true
+
+    restoreWindows: ->
+        
+        winDir = slash.join @userData, 'win'
+        oldDir = slash.join @userData, 'old'
+        fs.ensureDirSync oldDir
+        stashFiles = filelist oldDir, matchExt:'noon'
+        
+        if empty stashFiles
+            @createWindow()
+        else
+            for file in stashFiles
+                win = @createWindow()
+                newStash = slash.join winDir, "#{win.id}.noon"
+                fs.copySync file, newStash
+            fs.remove oldDir, ->
+            
+    #  0000000  000       0000000   000   000  00000000  
+    # 000       000      000   000  0000  000  000       
+    # 000       000      000   000  000 0 000  0000000   
+    # 000       000      000   000  000  0000  000       
+    #  0000000  0000000   0000000   000   000  00000000  
     
-    process: ->
+    cloneWinWithId: (winId) ->
         
-        inp = @inp[0]
-        out = @out[0]
-        if inp and out
-            if item = inp.head
-                if item.pos == inp.length
-                    if not out.tail or out.tail.pos >= 1
-                        out.add inp.pop()
+        winDir = slash.join @userData, 'win'
+        win = @createWindow()
+        newStash = slash.join winDir, "#{win.id}.noon"
+        winStash = slash.join winDir, "#{winId}.noon"
+        fs.copySync winStash, newStash
         
-m = new Main()
-m.init()
-m.run()
+    #  0000000    0000000  000000000  000   0000000   000   000  
+    # 000   000  000          000     000  000   000  0000  000  
+    # 000000000  000          000     000  000   000  000 0 000  
+    # 000   000  000          000     000  000   000  000  0000  
+    # 000   000   0000000     000     000   0000000   000   000  
+    
+    onMenuAction: (action, arg) =>
+
+        # klog 'onMenuAction' action, arg
+        switch action
+            when 'New Window' then return @cloneWinWithId arg
+        
+new Main

@@ -6,6 +6,9 @@
   "author": "monsterkodi",
   "license": "Unlicense",
   "dependencies": {
+    "electron": "^12.0.8",
+    "electron-packager": "^15.2.0",
+    "electron-rebuild": "^2.3.5",
     "kxk": "^0.404.0"
   }
 }
