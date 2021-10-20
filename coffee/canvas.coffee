@@ -193,10 +193,17 @@ class Canvas
             @draw()
             @dirty = false
             
+    # 0000000    00000000    0000000   000   000  
+    # 000   000  000   000  000   000  000 0 000  
+    # 000   000  0000000    000000000  000000000  
+    # 000   000  000   000  000   000  000   000  
+    # 0000000    000   000  000   000  00     00  
+    
     draw: ->
         klog @width, @height
-        @ctx.fillStyle = '#ff1'
-        @ctx.fillRect @zoom.value*@width/4, @zoom.value*@height/4, @zoom.value*@width/2, @zoom.value*@height/2
+        @ctx.strokeStyle = '#ff1'
+        # @ctx.fillRect @zoom.value*@width/4, @zoom.value*@height/4, @zoom.value*@width/2, @zoom.value*@height/2
+        @ctx.strokeRect @width/4, @height/4, @width/2, @height/2
                 
     #  0000000  000000000   0000000    0000000  000   000  
     # 000          000     000   000  000       000   000  
