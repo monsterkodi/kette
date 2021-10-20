@@ -6,7 +6,7 @@
 000   000  00000000     000     00     00   0000000   000   000  000   000  
 ###
 
-{ kstr, last } = require 'kxk'
+{ kpos, kstr, last } = require 'kxk'
 { lpad, rpad, pad } = kstr
 { max, min } = Math
 
@@ -14,26 +14,35 @@ class Network
 
     @: -> 
         
+        @pause = false
         @step  = 0
         @epoch = 0.0
-        @epoch_incr = 1
+        @epoch_incr = 0.04
         @belts = []
         @items = []
         @nodes = []
+        
+        @colidx = 0
+        @colors = ["#88f" "#f60"]
         
         @init()
     
     init: ->
         
-        belt = new Belt @epoch, 4.5, 0.8
+        belt = new Belt 1, kpos(-10,0), kpos(0,0)
         @belts.push belt
 
+        belt1 = new Belt 1, kpos(0,0), kpos(10,0)
+        @belts.push belt1
+        
+        @connect belt, belt1
+        
         @newItemOnBelt belt
         
-        belt2 = new Belt @epoch, 4.25, 0.5
+        belt2 = new Belt 1, kpos(10,0), kpos(10,-10)
         @belts.push belt2
         
-        @connect belt, belt2
+        @connect belt1, belt2
         
         @dump()
         
@@ -50,6 +59,8 @@ class Network
         
         if not belt.tail or belt.tail.pos >= 1
             item = new Item belt
+            @colidx = (@colidx+1)%@colors.length
+            item.color = @colors[@colidx]
             @items.push item
             
             belt.add item
@@ -59,16 +70,29 @@ class Network
         for @step in 1..100
             @nextStep()
                 
+    #  0000000  000000000  00000000  00000000   
+    # 000          000     000       000   000  
+    # 0000000      000     0000000   00000000   
+    #      000     000     000       000        
+    # 0000000      000     00000000  000        
+    
     nextStep: ->
         
-        if @step % 20 == 0
-            @newItemOnBelt @belts[0]
+        # if @step % 10 == 0
+        @newItemOnBelt @belts[0]
             
-        if @step == 300
+        if @step == 30
             last = @belts[-1]
-            belt = new Belt @epoch, 5.33, 0.015
+            belt = new Belt 1, kpos(10,-10), kpos(0,-10)
             @belts.push belt
             @connect last, belt
+            
+            belt2 = new Belt 1, kpos(0,-10), kpos(0,0)
+            @belts.push belt2
+            @connect belt, belt2
+            
+            @nodes[0].addInp belt2
+            belt2.out = @nodes[0]
         
         @epoch += @epoch_incr
         
@@ -82,8 +106,15 @@ class Network
             
     onAnimationFrame: ->
         
-        @step += 1
-        @nextStep()
+        if not @pause
+            @step += 1
+            @nextStep()
+        if @doStep
+            @step += 1
+            @nextStep()
+            @doStep = false
+        
+    togglePause: -> @pause = not @pause
                     
     dump: ->
         
@@ -107,7 +138,9 @@ class Network
 
 class Belt
     
-    @: (@epoch, @length, @speed=1) ->
+    @: (@speed, @p1, @p2) ->
+        
+        @length = @p1.to(@p2).length()
         
         @head   = null
         @tail   = null
@@ -120,9 +153,9 @@ class Belt
         if @head
             headRoom = @length - @head.pos
             
-            if @out?.out[0]?.tail and @out.out[0].tail.pos < 1
-                tailGap = 1 - @out.out[0].tail.pos
-                headRoom -= tailGap
+            tailGap = @out?.tailGap(@) or 0
+            
+            headRoom -= tailGap
             
             headMove = max 0 min @speed * epoch_incr, headRoom
             @head.pos += headMove
@@ -166,19 +199,57 @@ class Node
         @inp = []
         @out = []
         
+        @inpidx = 0
+        @outidx = 0
+        
     addInp: (belt) -> @inp.push belt
     addOut: (belt) -> @out.push belt
     
+    tailGap: (input) ->
+        
+        gap = 0
+        if @out.length
+            for oi in 0...@out.length
+                if @out[oi].tail and @out[oi].tail.pos < 1
+                    gap = max gap, 1 - @out[oi].tail.pos
+                    # if @inp.length > 1
+                        # log gap
+                        
+        if @inp.length
+            for ii in 0...@inp.length
+                if @inp[ii] != input
+                    if @inp[ii].head and @inp[ii].head.pos > @inp[ii].length-1
+                        if @inp[ii].length - @inp[ii].head.pos < input.length - input.head.pos
+                            return 1
+            
+        gap
+    
     process: ->
         
-        inp = @inp[0]
-        out = @out[0]
-        if inp and out
+        if @inp.length == 0 or @out.length == 0 then return
+        
+        # @inpidx += 1
+        @outidx += 1
+#         
+        # @inpidx %= @inp.length
+        @outidx %= @out.length
+#                 
+        # inp = @inp[@inpidx]
+        out = @out[@outidx]
+
+        # if item = inp.head
+            # if item.pos == inp.length
+                # if not out.tail or out.tail.pos >= 1
+                    # out.add inp.pop()
+
+        for ii in 0...@inp.length
+            inp = @inp[ii]
             if item = inp.head
                 if item.pos == inp.length
                     if not out.tail or out.tail.pos >= 1
                         out.add inp.pop()
-      
+                        return
+                    
 # 000  000000000  00000000  00     00  
 # 000     000     000       000   000  
 # 000     000     0000000   000000000  

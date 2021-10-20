@@ -150,6 +150,8 @@ class MainWin extends win
             when 'screenshot' 'preferences' 'fullscreen' 'about' 'quit' 'about' 'screenshot' 'minimize' 'maximize' 'reload' 'devTools'
                 return repost action[0].toUpperCase() + action[1..-1], args 
             when 'toggle menu'  then return repost 'Toggle Menu' args
+            when 'pause'        then return @network.togglePause()
+            when 'step'         then return @network.doStep = true
             # when 'context menu' then return @canvas.showContextMenu()
             when 'new window'
                 @saveStash()

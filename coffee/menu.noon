@@ -7,9 +7,11 @@
 
 belt
     save                    cmdctrl+s
+    --
     new window              cmdctrl+n
     - 
-    context menu            space
+    pause                   space
+    step                    right
     ----
     preferences             cmdctrl+,
     about                   alt+cmdctrl+/
