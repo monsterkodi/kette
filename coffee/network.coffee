@@ -106,21 +106,25 @@ class Network
             @doStep = false
         
     togglePause: -> @pause = not @pause
-                    
-    dump: ->
+    
+    nodeAtPos: (pos) ->
         
-        str = "#{lpad @step, 3} #{lpad @epoch.toFixed(1), 4}"
+        for node in @nodes
+            for idx in 0...node.inp.length
+                if node.inp[idx].p2.times(100).dist(pos) < 100
+                    return node
+            for idx in 0...node.out.length
+                if node.out[idx].p1.times(100).dist(pos) < 100
+                    return node
+      
+    beltAtPos: (pos) ->
         
         for belt in @belts
-            its = ''
-            item = belt.head
-            while item
-                its += "#{lpad item.pos.toFixed(2), 6} "
-                item = item.prev
-            str += " #{@belts.indexOf(belt)}:[#{its}]"
-        
-        log str
-    
+            if belt.p2.times(100).dist(pos) < 100
+                return belt
+            if belt.p1.times(100).dist(pos) < 100
+                return belt
+                    
 # 0000000    00000000  000      000000000  
 # 000   000  000       000         000     
 # 0000000    0000000   000         000     

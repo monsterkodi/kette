@@ -105,7 +105,22 @@ class Canvas
 
             @mousePos.x -= 2
             @mousePos.y -= 4
-    
+            
+            # klog 'mouseMove' @mousePos, @viewToWorld @mousePos
+                    
+            worldPos = @viewToWorld @mousePos
+            if node = @network.nodeAtPos worldPos
+                klog 'node!' @mousePos
+            else if belt = @network.beltAtPos worldPos
+                klog 'belt!' @mousePos
+                
+    viewToWorld: (viewPos) ->
+            
+        worldPos = viewPos.minus kpos @width/4, @height/4
+        worldPos.scale 2/@zoom.value
+        worldPos.add @zoom.center
+        worldPos
+        
     onMouseLeave: (event) =>
         
         delete @mousePos
@@ -146,8 +161,6 @@ class Canvas
     
         @zoom.center.sub delta.times 2/@zoom.value
         
-        klog 'zoom.center' @zoom.center
-    
     resetZoom: =>
         
         @zoom.value = 1
