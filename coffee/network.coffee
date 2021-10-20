@@ -6,7 +6,7 @@
 000   000  00000000     000     00     00   0000000   000   000  000   000  
 ###
 
-{ kstr } = require 'kxk'
+{ kstr, last } = require 'kxk'
 { lpad, rpad, pad } = kstr
 { max, min } = Math
 
@@ -25,12 +25,12 @@ class Network
     
     init: ->
         
-        belt = new Belt @epoch, 10, 0.88
+        belt = new Belt @epoch, 4.5, 0.8
         @belts.push belt
 
         @newItemOnBelt belt
         
-        belt2 = new Belt @epoch, 5, 0.5
+        belt2 = new Belt @epoch, 4.25, 0.5
         @belts.push belt2
         
         @connect belt, belt2
@@ -48,10 +48,11 @@ class Network
         
     newItemOnBelt: (belt) ->
         
-        item = new Item belt
-        @items.push item
-        
-        belt.add item
+        if not belt.tail or belt.tail.pos >= 1
+            item = new Item belt
+            @items.push item
+            
+            belt.add item
                 
     run: ->
         
@@ -60,16 +61,23 @@ class Network
                 
     nextStep: ->
         
-        if @step == 40 or @step == 80
+        if @step % 20 == 0
             @newItemOnBelt @belts[0]
+            
+        if @step == 300
+            last = @belts[-1]
+            belt = new Belt @epoch, 5.33, 0.015
+            @belts.push belt
+            @connect last, belt
         
         @epoch += @epoch_incr
-        for belt in @belts
-            belt.advance @epoch_incr
-            
+        
         for node in @nodes
             node.process()
-            
+        
+        for belt in @belts
+            belt.advance @epoch_incr
+                        
         # @dump()
             
     onAnimationFrame: ->
@@ -111,6 +119,11 @@ class Belt
         
         if @head
             headRoom = @length - @head.pos
+            
+            if @out?.out[0]?.tail and @out.out[0].tail.pos < 1
+                tailGap = 1 - @out.out[0].tail.pos
+                headRoom -= tailGap
+            
             headMove = max 0 min @speed * epoch_incr, headRoom
             @head.pos += headMove
             

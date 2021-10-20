@@ -41,9 +41,8 @@ class MainWin extends win
     onLoad: =>
         
         @main  =$ '#main'
-        @graph = new Canvas @main
-
         @network = new Network()
+        @canvas = new Canvas @main, @network
         
         @win.on 'focus'     @onFocus
         @win.on 'blur'      @onBlur
@@ -61,16 +60,16 @@ class MainWin extends win
         
         window.requestAnimationFrame @onAnimationFrame
            
-    onFocus: => #@graph.setWinFocus true
-    onBlur:  => #@graph.setWinFocus false
+    onFocus: => #@canvas.setWinFocus true
+    onBlur:  => #@canvas.setWinFocus false
     onMouseEnter: => 
         #@win.focus()
-        #@graph?.canvas?.focus()
+        #@canvas?.canvas?.focus()
         
     onAnimationFrame: =>
 
         @network.onAnimationFrame()
-        @graph.onAnimationFrame()
+        @canvas.onAnimationFrame()
         window.requestAnimationFrame @onAnimationFrame
 
     onMove: => window.stash.set 'bounds' @win.getBounds()
@@ -129,7 +128,7 @@ class MainWin extends win
     onKeyDown: (event) =>
 
         { mod, key, combo } = keyinfo.forEvent event
-        @graph?.modKeyComboEventDown mod, key, combo, event
+        @canvas?.modKeyComboEventDown mod, key, combo, event
         super
         
     # 00     00  00000000  000   000  000   000  
@@ -151,13 +150,13 @@ class MainWin extends win
             when 'screenshot' 'preferences' 'fullscreen' 'about' 'quit' 'about' 'screenshot' 'minimize' 'maximize' 'reload' 'devTools'
                 return repost action[0].toUpperCase() + action[1..-1], args 
             when 'toggle menu'  then return repost 'Toggle Menu' args
-            # when 'context menu' then return @graph.showContextMenu()
+            # when 'context menu' then return @canvas.showContextMenu()
             when 'new window'
                 @saveStash()
                 return repost 'New Window' @win.id
           
-        # if @graph
-            # return if 'unhandled' != @graph.onMenuAction action, args
+        # if @canvas
+            # return if 'unhandled' != @canvas.onMenuAction action, args
         super
                       
 new MainWin            

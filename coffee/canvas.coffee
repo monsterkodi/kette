@@ -6,21 +6,18 @@
  0000000  000   000  000   000      0      000   000  0000000     
 ###
 
-{ clamp, drag, elem, klog, kpos, post, stash } = require 'kxk'
+{ clamp, drag, elem, kpos, post, stash } = require 'kxk'
 { abs } = Math
 
 class Canvas
     
-    @: (@parent) ->
+    @: (@parent, @network) ->
         
         @zoom = 
-            resetOffsetX:   300
             value:          1.0       # current zoom value
-            default:        1.0       # value used when zoom is reset
             max:            50        # maximum value of magnification
             min:            0.01      # minimum value of minification
-            zeroPrice:      0         # price at canvas coordinate system origin
-            viewCenter:     kpos 0 0  # offset from lastKline in unscaled canvas coordinates
+            viewCenter:     kpos 0 0
         
         @div = elem class:"graphDiv" parent:@parent
         
@@ -129,7 +126,6 @@ class Canvas
         scaleFactor = 1 - event.deltaY / 600.0
         newZoom = clamp @zoom.min, @zoom.max, @zoom.value * scaleFactor
              
-        klog newZoom
         if @zoom.value != newZoom
                  
             @zoomAtViewPos newZoom, eventPos
@@ -143,7 +139,6 @@ class Canvas
     zoomAtViewPos: (newZoom, viewPos) ->
            
         center = viewPos.times 2
-        # ref = kpos @tickX(@numKlines-1), @priceY @zoom.zeroPrice
         ref = kpos 0 0
         @zoom.viewCenter.add (ref.plus (center.minus ref).scale newZoom / @zoom.value).sub center
         
@@ -153,18 +148,20 @@ class Canvas
 
         @zoom.value = newZoom
         
-        @redraw()
+        x = parseInt -@width/4 - @zoom.viewCenter.x
+        y = parseInt -@height/4 - @zoom.viewCenter.y
+        @canvas.style.transform = "translate3d(#{x}px, #{y}px, 0px) scale3d(#{@zoom.value/2}, #{@zoom.value/2}, 1)"
         
     moveByViewDelta: (delta) -> 
     
         @zoom.viewCenter.sub delta.times 2
-        @redraw()
+        @setZoomScale @zoom.value
     
     resetZoom: =>
         
         @zoom.value = 1
-        @zoom.viewCenter.x = @zoom.resetOffsetX
-        @zoom.viewCenter.y = @height * (@currentPrice() - @dataMid) / @dataRange / 2
+        @zoom.viewCenter.x = 0
+        @zoom.viewCenter.y = @height
         @zoomAtViewPos @zoom.value, kpos 0.5 0.5
         
     # 00000000   00000000   0000000  000  0000000  00000000  
@@ -188,10 +185,9 @@ class Canvas
     
     onAnimationFrame: =>
 
-        if @dirty
-            @clear()
-            @draw()
-            @dirty = false
+        @clear()
+        @draw()
+        @dirty = false
             
     # 0000000    00000000    0000000   000   000  
     # 000   000  000   000  000   000  000 0 000  
@@ -200,10 +196,32 @@ class Canvas
     # 0000000    000   000  000   000  00     00  
     
     draw: ->
-        klog @width, @height
-        @ctx.strokeStyle = '#ff1'
-        # @ctx.fillRect @zoom.value*@width/4, @zoom.value*@height/4, @zoom.value*@width/2, @zoom.value*@height/2
-        @ctx.strokeRect @width/4, @height/4, @width/2, @height/2
+        # klog @width, @height
+        @ctx.strokeStyle = '#888'
+        @ctx.fillStyle = '#444'
+        @ctx.lineWidth = 4
+        
+        x = @width/2
+        y = @height/2
+        
+        @ctx.beginPath()
+        @ctx.moveTo x, y
+        for belt in @network.belts
+            x += belt.length*50
+            @ctx.lineTo x, y
+        @ctx.stroke()
+        
+        x = @width/2
+        for belt in @network.belts
+            @ctx.fillRect x-5, y-5, 10, 10
+            
+            item = belt.head
+            while item
+                @ctx.fillRect x-25 + item.pos*50, y-25, 50, 50
+                @ctx.strokeRect x-25 + item.pos*50, y-25, 50, 50
+                item = item.prev
+                
+            x += belt.length*50
                 
     #  0000000  000000000   0000000    0000000  000   000  
     # 000          000     000   000  000       000   000  
@@ -211,18 +229,14 @@ class Canvas
     #      000     000     000   000       000  000   000  
     # 0000000      000     000   000  0000000   000   000  
     
-    onStash: =>
-                
-        stash = window.stash
+    onStash: => stash = window.stash
         
-    onRestore: =>
-        
-        stash = window.stash
+    onRestore: => stash = window.stash
         
     onMenuAction: (action, args) ->
         
         switch action 
-            when 'reset zoom'           then return @resetZoom()
+            when 'reset zoom' then return @resetZoom()
             
         'unhandled'
         
@@ -233,10 +247,5 @@ class Canvas
     # 000   000  00000000     000       
         
     modKeyComboEventDown: (mod, key, combo, event) ->
-        
-        switch combo
-            when "command+0"    then @resetAvgScale()
-            when 'command+='    then @increaseAvgScale()
-            when 'command+-'    then @decreaseAvgScale()
-                
+                        
 module.exports = Canvas
