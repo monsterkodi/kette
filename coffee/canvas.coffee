@@ -196,19 +196,20 @@ class Canvas
     # 0000000    000   000  000   000  00     00  
     
     draw: ->
-        # klog @width, @height
         @ctx.strokeStyle = '#8888'
         @ctx.lineWidth = 0
         
+        sz = 70
+        
         @ctx.beginPath()
         for belt in @network.belts
-            @ctx.moveTo @width/2+belt.p1.x*50, @height/2+belt.p1.y*50
-            @ctx.lineTo @width/2+belt.p2.x*50, @height/2+belt.p2.y*50
+            @ctx.moveTo @width/2+belt.p1.x*sz, @height/2+belt.p1.y*sz
+            @ctx.lineTo @width/2+belt.p2.x*sz, @height/2+belt.p2.y*sz
         @ctx.stroke()
         
         @ctx.fillStyle = '#8888'
         for belt in @network.belts
-            @ctx.fillRect @width/2+belt.p1.x*50-10, @height/2+belt.p1.y*50-10, 20, 20
+            @ctx.fillRect @width/2+belt.p1.x*sz-10, @height/2+belt.p1.y*sz-10, 20, 20
             
         for belt in @network.belts
             item = belt.head
@@ -216,8 +217,7 @@ class Canvas
                 @ctx.fillStyle = item.color
                 p = belt.p1.plus belt.p1.to(belt.p2).times(item.pos/belt.length)
                 
-                @ctx.fillRect @width/2+p.x*50-25, @height/2+p.y*50-25, 50, 50
-                # @ctx.strokeRect @width/2+p.x*50-25, @height/2+p.y*50-25, 50, 50
+                @ctx.fillRect @width/2+p.x*sz-sz/2, @height/2+p.y*sz-sz/2, sz, sz
                 item = item.prev
                 
     #  0000000  000000000   0000000    0000000  000   000  
