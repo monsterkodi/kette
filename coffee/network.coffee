@@ -16,9 +16,12 @@ class Network
         
         @step  = 0
         @epoch = 0.0
+        @epoch_incr = 1
         @belts = []
         @items = []
         @nodes = []
+        
+        @init()
     
     init: ->
         
@@ -52,21 +55,27 @@ class Network
                 
     run: ->
         
-        @epoch_incr = 1
-        
         for @step in 1..100
+            @nextStep()
                 
-            if @step == 40 or @step == 80
-                @newItemOnBelt @belts[0]
+    nextStep: ->
+        
+        if @step == 40 or @step == 80
+            @newItemOnBelt @belts[0]
+        
+        @epoch += @epoch_incr
+        for belt in @belts
+            belt.advance @epoch_incr
             
-            @epoch += @epoch_incr
-            for belt in @belts
-                belt.advance @epoch_incr
-                
-            for node in @nodes
-                node.process()
-                
-            @dump()
+        for node in @nodes
+            node.process()
+            
+        # @dump()
+            
+    onAnimationFrame: ->
+        
+        @step += 1
+        @nextStep()
                     
     dump: ->
         
@@ -170,6 +179,4 @@ class Item
         @pos  = 0.0
         @prev = null
                         
-n = new Network()
-n.init()
-n.run()
+module.exports = Network

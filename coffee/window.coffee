@@ -9,6 +9,8 @@
 { $, args, kerror, keyinfo, open, post, stash, win } = require 'kxk'
 
 electron = require 'electron'
+Canvas  = require './canvas'
+Network = require './network'
 
 class MainWin extends win
     
@@ -39,8 +41,10 @@ class MainWin extends win
     onLoad: =>
         
         @main  =$ '#main'
-        # @graph = new Graph @main
+        @graph = new Canvas @main
 
+        @network = new Network()
+        
         @win.on 'focus'     @onFocus
         @win.on 'blur'      @onBlur
         @win.on 'close'     @onClose
@@ -64,8 +68,9 @@ class MainWin extends win
         #@graph?.canvas?.focus()
         
     onAnimationFrame: =>
-        
-        #@graph.onAnimationFrame()
+
+        @network.onAnimationFrame()
+        @graph.onAnimationFrame()
         window.requestAnimationFrame @onAnimationFrame
 
     onMove: => window.stash.set 'bounds' @win.getBounds()
