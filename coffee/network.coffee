@@ -6,7 +6,7 @@
 000   000  00000000     000     00     00   0000000   000   000  000   000  
 ###
 
-{ kpos, kstr } = require 'kxk'
+{ clamp, kpos, kstr } = require 'kxk'
 { lpad, rpad, pad } = kstr
 { max, min } = Math
 
@@ -16,6 +16,7 @@ class Network
         
         @pause = false
         @step  = 0
+        @speed = 1
         @epoch = 0.0
         @epoch_incr = 0.1
         @belts = []
@@ -23,43 +24,58 @@ class Network
         @nodes = []
         
         @colidx = 0
-        @colors = ["#88f8" "#f608"]
+        @shapeidx = 0
+        @colors = ['#aaf' '#f00' '#ff0']
+        @shapes = ['circle' 'rect' 'triangle' 'diamond']
         
         @init()
 
     init: ->
         
-        belt0 = @addBelt 1, kpos(-10,0), kpos(0,0)
-
-        belt1 = @addBelt 1, kpos(0,0), kpos(10,0)
+        p1 = kpos -20   0
+        p2 = kpos   0   0
+        p3 = kpos  70   0
+        p4 = kpos  70 -90
+        p5 = kpos   0 -90
+        p6 = kpos   0  90
+        
+        belt0 = @addBelt 1, p1, p2
+        belt1 = @addBelt 1, p2, p3
+        belt2 = @addBelt 1, p3, p4
+        belt3 = @addBelt 1, p4, p5
+        belt4 = @addBelt 1, p2, p5
+        belt5 = @addBelt 1, p2, p6
         
         @connect belt0, belt1
-        
-        belt2 = @addBelt 1, kpos(10,0), kpos(10,-10)
-        
         @connect belt1, belt2
-        
-        belt3 = @addBelt 1, kpos(10,-10), kpos(0,-10)
-        
         @connect belt2, belt3
+        @addNode belt3
         
-        belt4 = @addBelt 1, kpos(0,-10), kpos(0,0)
+        @nodes[-1].addInp belt4
+        belt4.out = @nodes[-1]
         
-        @connect belt3, belt4
-        
-        @nodes[0].addInp belt4
-        belt4.out = @nodes[0]
-        
-        belt5 = @addBelt 1, kpos(0,0), kpos(0,10)
+        @nodes[0].addOut belt4
+        belt4.inp = @nodes[0]
         
         @nodes[0].addOut belt5
         belt5.inp = @nodes[0]
         
+        @addNode belt5
+        
     addBelt: (speed, p1, p2) ->
         
         belt = new Belt speed, p1, p2
+        belt.epoch = @epoch
         @belts.push belt
         belt
+        
+    addNode: (belt) ->
+        
+        node = new Node 
+        @nodes.push node
+        node.addInp belt
+        belt.out = node
+        node
         
     connect: (belt1, belt2) ->
         
@@ -69,13 +85,19 @@ class Network
         node.addOut belt2
         belt1.out = node
         belt2.inp = node
+        node
         
     newItemOnBelt: (belt) ->
         
         if not belt.tail or belt.tail.pos >= 1
             item = new Item belt
+
             @colidx = (@colidx+1)%@colors.length
             item.color = @colors[@colidx]
+
+            @shapeidx = (@shapeidx+1)%@shapes.length
+            item.shape = @shapes[@shapeidx]
+            
             @items.push item
             
             belt.add item
@@ -97,15 +119,15 @@ class Network
                         
     onAnimationFrame: ->
         
-        if not @pause
-            @step += 1
-            @nextStep()
-        if @doStep
-            @step += 1
-            @nextStep()
+        if not @pause or @doStep
             @doStep = false
+            for i in 0...@speed
+                @step += 1
+                @nextStep()
         
     togglePause: -> @pause = not @pause
+    
+    addToSpeed: (delta) -> @speed = clamp 1 10 @speed + delta
     
     nodeAtPos: (pos) ->
         
@@ -158,16 +180,14 @@ class Belt
                 if not @head then return
                     
             headRoom = @length - @head.pos
-            tailGap = @out?.tailGap(@) or 0
-            
-            headRoom -= tailGap
+            # headRoom -= @out?.tailGap(@) or 0
             
             headMove = max 0 min @speed * epoch_incr, headRoom
             @head.pos += headMove
             
             item = @head
             while prev = item.prev
-                itemRoom = item.pos - prev.pos - 1
+                itemRoom = item.pos - 1 - prev.pos
                 prevMove = max 0 min @speed * epoch_incr, itemRoom
                 prev.pos += prevMove
                 item = prev
@@ -218,13 +238,14 @@ class Node
         @outidx %= @out.length
         out = @out[@outidx]
 
-        if not out.tail or out.tail.pos >= 1
+        if (not out.tail) or out.tail.pos >= 1
             tailRoom = if out.tail then out.tail.pos-1 else out.length
             epoch_fact = 1.0 - ((belt.length - belt.head.pos) / (epoch_incr))
             epoch_rest = epoch_incr * epoch_fact
             out.add belt.pop()
             if belt.epoch < out.epoch
                 out.tail.pos += max 0 min out.speed * epoch_rest, tailRoom
+                
             return
     
     tailGap: (input) ->

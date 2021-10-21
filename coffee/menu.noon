@@ -10,6 +10,8 @@ belt
     --
     new window              cmdctrl+n
     - 
+    speed up                up
+    speed down              down
     pause                   space
     step                    right
     ----

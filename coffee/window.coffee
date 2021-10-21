@@ -152,6 +152,8 @@ class MainWin extends win
             when 'toggle menu'  then return repost 'Toggle Menu' args
             when 'pause'        then return @network.togglePause()
             when 'step'         then return @network.doStep = true
+            when 'speed down'   then return @network.addToSpeed -1
+            when 'speed up'     then return @network.addToSpeed 1
             # when 'context menu' then return @canvas.showContextMenu()
             when 'new window'
                 @saveStash()
