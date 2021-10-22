@@ -159,7 +159,8 @@ class MainWin extends win
             when 'new window'
                 @saveStash()
                 return repost 'New Window' @win.id
-            when 'miner' 'builder' 'painter' 'sink' then return @network.build action, @canvas.mousePos
+            when 'red' 'green' 'blue' then return @network.build action, @canvas.mousePos
+            when 'miner' 'builder' 'crafter' 'sink' then return @network.build action, @canvas.mousePos
         # if @canvas
             # return if 'unhandled' != @canvas.onMenuAction action, args
             

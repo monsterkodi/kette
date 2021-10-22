@@ -24,9 +24,12 @@ belt
 build
 
     miner                   1
-    painter                 2
-    builder                 3
+    builder                 2
+    crafter                 3
     sink                    4
+    red                     r
+    green                   g
+    blue                    b
     
 # 000   000  000  000   000  0000000     0000000   000   000
 # 000 0 000  000  0000  000  000   000  000   000  000 0 000

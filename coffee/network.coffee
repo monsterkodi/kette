@@ -6,7 +6,7 @@
 000   000  00000000     000     00     00   0000000   000   000  000   000  
 ###
 
-{ clamp, kpos, kstr } = require 'kxk'
+{ clamp, kstr } = require 'kxk'
 { lpad, rpad, pad } = kstr
 { max, min } = Math
 
@@ -20,63 +20,34 @@ class Network
         @epoch = 0.0
         @epoch_incr = 0.1
         @belts = []
-        @items = []
         @nodes = []
         @buildings = []
+        @miners = []
         
         @colidx = 0
         @shapeidx = 0
         @colors = ['#aaf' '#f00' '#ff0']
         @shapes = ['circle' 'rect' 'triangle' 'diamond']
         
-        @init()
-        
     build: (type, pos) -> 
     
+        newNode = @newNode pos
         building = switch type
-            when 'miner'   then new Miner   pos, @newNode pos
-            when 'painter' then new Painter pos, @newNode pos
-            when 'builder' then new Builder pos, @newNode pos
-            when 'sink'    then new Sink    pos, @newNode pos
+            when 'miner'   then new Miner   pos, newNode
+            when 'builder' then new Builder pos, newNode
+            when 'sink'    then new Sink    pos, newNode
+            when 'red' 'green' 'blue' then new Painter pos, newNode, type
             else null
         
         if building
+            
+            if building.type == 'miner'
+                @miners.push building
+            
             building.node.building = building
             @buildings.push building
             building
 
-    init: ->
-        
-        p1 = kpos -20   0
-        p2 = kpos   0   0
-        p3 = kpos  70   0
-        p4 = kpos  70 -90
-        p5 = kpos   0 -90
-        p6 = kpos   0  90
-        
-        belt0 = @addBelt 1, p1, p2
-        belt1 = @addBelt 1, p2, p3
-        belt2 = @addBelt 1, p3, p4
-        belt3 = @addBelt 1, p4, p5
-        belt4 = @addBelt 1, p2, p5
-        belt5 = @addBelt 1, p2, p6
-        
-        @connect belt0, belt1
-        @connect belt1, belt2
-        @connect belt2, belt3
-        @addNode belt3
-        
-        @nodes[-1].addInp belt4
-        belt4.out = @nodes[-1]
-        
-        @nodes[0].addOut belt4
-        belt4.inp = @nodes[0]
-        
-        @nodes[0].addOut belt5
-        belt5.inp = @nodes[0]
-        
-        @addNode belt5
-        
     addBelt: (speed, p1, p2) ->
         
         belt = new Belt speed, p1, p2
@@ -105,25 +76,9 @@ class Network
         belt1.out = node
         belt2.inp = node
         node
-        
-    newItemOnBelt: (belt) ->
-        
-        if not belt.tail or belt.tail.pos >= 1
-            item = new Item belt
-
-            @colidx = (@colidx+1)%@colors.length
-            item.color = @colors[@colidx]
-
-            @shapeidx = (@shapeidx+1)%@shapes.length
-            item.shape = @shapes[@shapeidx]
-            
-            @items.push item
-            
-            belt.add item
-            
+                    
     clear: ->
         
-        @items = []
         for belt in @belts
             belt.head = null
             belt.tail = null
@@ -136,9 +91,11 @@ class Network
     
     nextStep: ->
         
-        @newItemOnBelt @belts[0]
-                    
+        @step  += 1
         @epoch += @epoch_incr
+        
+        for miner in @miners
+            miner.createItem @step
         
         for belt in @belts
             belt.advance @epoch_incr
@@ -148,7 +105,6 @@ class Network
         if not @pause or @doStep
             @doStep = false
             for i in 0...@speed
-                @step += 1
                 @nextStep()
         
     togglePause: -> @pause = not @pause
@@ -290,11 +246,30 @@ class Miner
     
     @: (@pos, @node) -> 
     
-        @type  ='miner'
-        @color = '#fff'
-        @size  = 2
+        @type   ='miner'
+        @color  = '#fff'
+        @size   = 2
+        @outidx = 0
         
         delete @node.inp
+        
+    createItem: (step) ->
+
+        numOut = @node.out.length
+        
+        if step % 20 == 0 and numOut
+                
+            @outidx += 1
+            @outidx %= numOut
+            
+            for i in 0...numOut
+                belt = @node.out[(@outidx+i)%numOut]
+                if not belt.tail or belt.tail.pos >= 1
+                    item = new Item belt
+                    item.color = "#888"
+                    item.shape = 'circle'
+                    belt.add item
+                    return
     
     dispatch: (belt) -> false
 
@@ -315,9 +290,19 @@ class Sink
 
 class Painter
     
-    @: (@pos, @node) -> @color = '#8886'; @size = 2; @type='painter'
+    @: (@pos, @node, colorKey) -> 
     
-    dispatch: (belt) -> belt.head.color = '#ff0'; false
+        @type  ='painter'
+        @size  = 2
+        
+        @paint = switch colorKey
+            when 'red'   then '#f00'
+            when 'green' then '#0f0'
+            when 'blue'  then '#00f'
+    
+        @color = @paint + '6'
+        
+    dispatch: (belt) -> belt.head.color = @paint; false
 
 class Builder
     
