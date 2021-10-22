@@ -6,7 +6,7 @@
 00     00  000  000   000  0000000     0000000   00     00
 ###
 
-{ $, args, kerror, keyinfo, open, post, stash, win } = require 'kxk'
+{ $, args, kerror, keyinfo, klog, open, post, stash, win } = require 'kxk'
 
 electron = require 'electron'
 Canvas  = require './canvas'
@@ -154,14 +154,16 @@ class MainWin extends win
             when 'step'         then return @network.doStep = true
             when 'speed down'   then return @network.addToSpeed -1
             when 'speed up'     then return @network.addToSpeed 1
-            when 'Clear'        then return @network.clear()
+            when 'clear'        then return @network.clear()
             # when 'context menu' then return @canvas.showContextMenu()
             when 'new window'
                 @saveStash()
                 return repost 'New Window' @win.id
-          
+            when 'miner' 'builder' 'painter' 'sink' then return @network.build action, @canvas.mousePos
         # if @canvas
             # return if 'unhandled' != @canvas.onMenuAction action, args
+            
+        klog "menuAction '#{action}'" # args     
         super
                       
 new MainWin            

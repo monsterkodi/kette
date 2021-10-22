@@ -10,6 +10,7 @@ belt
     --
     new window              cmdctrl+n
     - 
+    clear                   k
     speed up                up
     speed down              down
     pause                   space
@@ -19,6 +20,13 @@ belt
     about                   alt+cmdctrl+/
     -----
     quit                    cmdctrl+q
+    
+build
+
+    miner                   1
+    painter                 2
+    builder                 3
+    sink                    4
     
 # 000   000  000  000   000  0000000     0000000   000   000
 # 000 0 000  000  0000  000  000   000  000   000  000 0 000

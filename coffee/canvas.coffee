@@ -6,8 +6,10 @@
  0000000  000   000  000   000      0      000   000  0000000     
 ###
 
-{ clamp, drag, elem, kpos, post, sh, stash } = require 'kxk'
+{ clamp, drag, elem, kpos, post, sh, stash, stopEvent } = require 'kxk'
 { max, round } = Math
+
+Menu = require './menu'
 
 class Canvas
     
@@ -30,6 +32,8 @@ class Canvas
         post.on 'stash'   @onStash
         post.on 'restore' @onRestore
           
+    onContextMenu: (event) -> stopEvent event 
+        
     #  0000000   0000000   000   000  000   000   0000000    0000000  
     # 000       000   000  0000  000  000   000  000   000  000       
     # 000       000000000  000 0 000   000 000   000000000  0000000   
@@ -103,38 +107,53 @@ class Canvas
     
     onDragStart: (drag, event) => 
     
+        if event.getModifierState "Meta"
+            new Menu @posForEvent event
+            return
+        
         if @dragNode = @network.nodeAtPos @gridPosForEvent event
             @div.style.cursor = 'grabbing'
+            
+            if not @dragNode.out?
+                delete @dragNode
             
         if not @dragNode
             @div.style.cursor = 'move'
     
     onDragMove: (drag, event) => 
     
+        if event.getModifierState "Meta"
+            return
+            
         if not @dragNode
             @moveByViewDelta drag.delta
             @div.style.cursor = 'move'
         else
             if dropNode = @network.nodeAtPos @gridPosForEvent event
-                if dropNode != @dragNode
-                    @div.style.cursor = 'pointer'
+                if dropNode != @dragNode and dropNode.inp?
+                    @div.style.cursor = 'grab'
                 else
                     @div.style.cursor = 'grabbing'
             else
-                @div.style.cursor = 'grabbing'
+                @div.style.cursor = 'pointer'
         
     onDragStop: (drag, event) =>
         
         if @dragNode
-            gp   = @gridPosForEvent event
-            belt = @network.addBelt 1, @dragNode.inp[0].p2, gp
-            belt.inp = @dragNode
-            @dragNode.addOut belt
-            if @dropNode = @network.nodeAtPos gp
-                belt.out = @dropNode
-                @dropNode.addInp belt
+            gp       = @gridPosForEvent event
+            dropNode = @network.nodeAtPos gp
+            
+            if dropNode and not dropNode.inp
+                true
             else
-                @network.addNode belt
+                belt = @network.addBelt 1, @dragNode.pos, gp
+                belt.inp = @dragNode
+                @dragNode.addOut belt
+                if dropNode
+                    belt.out = dropNode
+                    dropNode.addInp belt
+                else
+                    @network.addNode belt
 
         delete @dragNode
         
@@ -157,11 +176,13 @@ class Canvas
         if event
             
             @mousePos = @gridPosForEvent event
-            @mousePos ?= kpos 0 0
             
             if not @dragNode
                 if node = @network.nodeAtPos @gridPosForEvent event
-                    @div.style.cursor = 'grab'
+                    if node.out?
+                        @div.style.cursor = 'grab'
+                    else
+                        @div.style.cursor = 'default'
                 else
                     @div.style.cursor = 'default'
                         
@@ -285,6 +306,19 @@ class Canvas
                 
                 item = item.prev
                 
+        for building in @network.buildings
+            x = xo+building.pos.x*sz
+            y = yo+building.pos.y*sz
+            @ctx.fillStyle = building.color
+            
+            switch building.type
+                when 'miner' 'sink'
+                    @ctx.beginPath()
+                    @ctx.arc x, y, sz*building.size/2, 0, 2 * Math.PI, false
+                    @ctx.fill()     
+                else            
+                    @ctx.fillRect x-sz*building.size/2, y-sz*building.size/2, sz*building.size, sz*building.size
+            
     onStash: => stash = window.stash
         
     onRestore: => stash = window.stash

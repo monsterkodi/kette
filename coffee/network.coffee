@@ -22,6 +22,7 @@ class Network
         @belts = []
         @items = []
         @nodes = []
+        @buildings = []
         
         @colidx = 0
         @shapeidx = 0
@@ -29,6 +30,20 @@ class Network
         @shapes = ['circle' 'rect' 'triangle' 'diamond']
         
         @init()
+        
+    build: (type, pos) -> 
+    
+        building = switch type
+            when 'miner'   then new Miner   pos, @newNode pos
+            when 'painter' then new Painter pos, @newNode pos
+            when 'builder' then new Builder pos, @newNode pos
+            when 'sink'    then new Sink    pos, @newNode pos
+            else null
+        
+        if building
+            building.node.building = building
+            @buildings.push building
+            building
 
     init: ->
         
@@ -68,22 +83,24 @@ class Network
         belt.epoch = @epoch
         @belts.push belt
         belt
+
+    newNode: (pos) ->
+        
+        node = new Node pos
+        @nodes.push node
+        node
         
     addNode: (belt) ->
         
-        node = new Node 
-        @nodes.push node
+        node = @newNode belt.p2
         node.addInp belt
-        node.pos = belt.p2
         belt.out = node
         node
-        
+                
     connect: (belt1, belt2) ->
         
-        node = new Node 
-        @nodes.push node
+        node = @newNode belt1.p2
         node.addInp belt1
-        node.pos = belt1.p2
         node.addOut belt2
         belt1.out = node
         belt2.inp = node
@@ -180,7 +197,7 @@ class Belt
             
             headPos = @head.pos + @speed * epoch_incr
             
-            if @out and @length - headPos <= 0
+            if @out and headPos >= @length
                 @out.dispatch @, epoch_incr
                 if not @head then return
                     
@@ -223,7 +240,7 @@ class Belt
 
 class Node
     
-    @: ->
+    @: (@pos) ->
         
         @inp = []
         @out = []
@@ -231,12 +248,14 @@ class Node
         @inpidx = 0
         @outidx = 0
         
-        @pos = kpos 0 0
+        @building = null
         
     addInp: (belt) -> @inp.push belt
     addOut: (belt) -> @out.push belt
     
     dispatch: (belt, epoch_incr) ->
+        
+        if @building?.dispatch(belt) then return
         
         if @inp.length == 0 or @out.length == 0 then return
         
@@ -266,5 +285,44 @@ class Item
     
         @pos  = 0.0
         @prev = null
-                        
+             
+class Miner
+    
+    @: (@pos, @node) -> 
+    
+        @type  ='miner'
+        @color = '#fff'
+        @size  = 2
+        
+        delete @node.inp
+    
+    dispatch: (belt) -> false
+
+class Sink
+    
+    @: (@pos, @node) -> 
+    
+        @type   ='sink'
+        @color  = '#333' 
+        @size   = 2
+        
+        delete @node.out
+    
+    dispatch: (belt) -> 
+
+        belt.pop() 
+        true
+
+class Painter
+    
+    @: (@pos, @node) -> @color = '#8886'; @size = 2; @type='painter'
+    
+    dispatch: (belt) -> belt.head.color = '#ff0'; false
+
+class Builder
+    
+    @: (@pos, @node) -> @color = '#8886'; @size = 3; @type='builder'
+    
+    dispatch: (belt) -> false
+    
 module.exports = Network
