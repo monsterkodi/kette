@@ -74,6 +74,7 @@ class Network
         node = new Node 
         @nodes.push node
         node.addInp belt
+        node.pos = belt.p2
         belt.out = node
         node
         
@@ -82,6 +83,7 @@ class Network
         node = new Node 
         @nodes.push node
         node.addInp belt1
+        node.pos = belt1.p2
         node.addOut belt2
         belt1.out = node
         belt2.inp = node
@@ -101,6 +103,13 @@ class Network
             @items.push item
             
             belt.add item
+            
+    clear: ->
+        
+        @items = []
+        for belt in @belts
+            belt.head = null
+            belt.tail = null
                 
     #  0000000  000000000  00000000  00000000   
     # 000          000     000       000   000  
@@ -132,19 +141,15 @@ class Network
     nodeAtPos: (pos) ->
         
         for node in @nodes
-            for idx in 0...node.inp.length
-                if node.inp[idx].p2.times(100).dist(pos) < 100
-                    return node
-            for idx in 0...node.out.length
-                if node.out[idx].p1.times(100).dist(pos) < 100
-                    return node
+            if node.pos.dist(pos) < 0.5
+                return node
       
     beltAtPos: (pos) ->
         
         for belt in @belts
-            if belt.p2.times(100).dist(pos) < 100
+            if belt.p2.dist(pos) < 0.5
                 return belt
-            if belt.p1.times(100).dist(pos) < 100
+            if belt.p1.dist(pos) < 0.5
                 return belt
                     
 # 0000000    00000000  000      000000000  
@@ -180,7 +185,6 @@ class Belt
                 if not @head then return
                     
             headRoom = @length - @head.pos
-            # headRoom -= @out?.tailGap(@) or 0
             
             headMove = max 0 min @speed * epoch_incr, headRoom
             @head.pos += headMove
@@ -227,6 +231,8 @@ class Node
         @inpidx = 0
         @outidx = 0
         
+        @pos = kpos 0 0
+        
     addInp: (belt) -> @inp.push belt
     addOut: (belt) -> @out.push belt
     
@@ -248,22 +254,6 @@ class Node
                 
             return
     
-    tailGap: (input) ->
-        
-        gap = 0
-        if @out.length
-            for oi in 0...@out.length
-                if @out[oi].tail and @out[oi].tail.pos < 1
-                    gap = max gap, 1 - @out[oi].tail.pos
-                        
-        if @inp.length
-            for ii in 0...@inp.length
-                if @inp[ii] != input
-                    if @inp[ii].head and @inp[ii].head.pos > @inp[ii].length-1
-                        if @inp[ii].length - @inp[ii].head.pos < input.length - input.head.pos
-                            return 1
-        gap
-                        
 # 000  000000000  00000000  00     00  
 # 000     000     000       000   000  
 # 000     000     0000000   000000000  

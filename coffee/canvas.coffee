@@ -6,8 +6,8 @@
  0000000  000   000  000   000      0      000   000  0000000     
 ###
 
-{ clamp, drag, elem, kpos, post, stash } = require 'kxk'
-{ max } = Math
+{ clamp, drag, elem, kpos, post, sh, stash } = require 'kxk'
+{ max, round } = Math
 
 class Canvas
     
@@ -16,9 +16,10 @@ class Canvas
         @zoom = 
             value:  1.0       # current zoom value
             max:    50        # maximum value of magnification
-            min:    0.01      # minimum value of minification
+            min:    0.2       # minimum value of minification
             center: kpos 0 0
         
+        @gridSize = 10
         @div = elem class:"graphDiv" parent:@parent
         
         @div.addEventListener 'contextmenu' @onContextMenu
@@ -66,6 +67,12 @@ class Canvas
 
     clear: -> @canvas.height = @canvas.height
                 
+    # 00000000    0000000    0000000  
+    # 000   000  000   000  000       
+    # 00000000   000   000  0000000   
+    # 000        000   000       000  
+    # 000         0000000   0000000   
+    
     posForEvent: (event) ->
         
         eventPos = kpos event
@@ -75,7 +82,19 @@ class Canvas
         eventPos.y -= parseInt br.top
         
         eventPos
+        
+    gridPosForEvent: (event) ->
+        
+        wp = @viewToWorld @posForEvent event
+        kpos round(wp.x/@gridSize), round(wp.y/@gridSize)
             
+    viewToWorld: (viewPos) ->
+            
+        worldPos = viewPos.minus kpos @width/4, @height/4
+        worldPos.scale 2/@zoom.value
+        worldPos.add @zoom.center
+        worldPos
+        
     # 0000000    00000000    0000000    0000000   
     # 000   000  000   000  000   000  000        
     # 000   000  0000000    000000000  000  0000  
@@ -84,8 +103,7 @@ class Canvas
     
     onDragStart: (drag, event) => 
     
-        worldPos = @viewToWorld @posForEvent event
-        if @dragNode = @network.nodeAtPos worldPos
+        if @dragNode = @network.nodeAtPos @gridPosForEvent event
             @div.style.cursor = 'grabbing'
             
         if not @dragNode
@@ -97,8 +115,7 @@ class Canvas
             @moveByViewDelta drag.delta
             @div.style.cursor = 'move'
         else
-            mp = @viewToWorld @posForEvent event
-            if dropNode = @network.nodeAtPos mp
+            if dropNode = @network.nodeAtPos @gridPosForEvent event
                 if dropNode != @dragNode
                     @div.style.cursor = 'pointer'
                 else
@@ -109,12 +126,11 @@ class Canvas
     onDragStop: (drag, event) =>
         
         if @dragNode
-            mp   = @viewToWorld @posForEvent event
-            outp = kpos parseInt(mp.x/100+0.499), parseInt(mp.y/100+0.499)
-            belt = @network.addBelt 1, @dragNode.inp[0].p2, outp
+            gp   = @gridPosForEvent event
+            belt = @network.addBelt 1, @dragNode.inp[0].p2, gp
             belt.inp = @dragNode
             @dragNode.addOut belt
-            if @dropNode = @network.nodeAtPos mp
+            if @dropNode = @network.nodeAtPos gp
                 belt.out = @dropNode
                 @dropNode.addInp belt
             else
@@ -138,38 +154,21 @@ class Canvas
     
     onMouseMove: (event) =>
 
-        if @lastMouseEvent = event
+        if event
             
-            @mousePos = @posForEvent event
+            @mousePos = @gridPosForEvent event
             @mousePos ?= kpos 0 0
-
-            @mousePos.x -= 2
-            @mousePos.y -= 4
             
             if not @dragNode
-                worldPos = @viewToWorld @mousePos
-                if node = @network.nodeAtPos worldPos
+                if node = @network.nodeAtPos @gridPosForEvent event
                     @div.style.cursor = 'grab'
                 else
                     @div.style.cursor = 'default'
-                
-    viewToWorld: (viewPos) ->
-            
-        worldPos = viewPos.minus kpos @width/4, @height/4
-        worldPos.scale 2/@zoom.value
-        worldPos.add @zoom.center
-        worldPos
-        
+                        
     onMouseLeave: (event) =>
         
         delete @mousePos
 
-    # 000   000  000   000  00000000  00000000  000      
-    # 000 0 000  000   000  000       000       000      
-    # 000000000  000000000  0000000   0000000   000      
-    # 000   000  000   000  000       000       000      
-    # 00     00  000   000  00000000  00000000  0000000  
-    
     onWheel: (event) =>
         
         viewPos = @posForEvent event
@@ -206,19 +205,7 @@ class Canvas
         @zoom.center.x = 0
         @zoom.center.y = 0
         
-    # 00000000   00000000   0000000  000  0000000  00000000  
-    # 000   000  000       000       000     000   000       
-    # 0000000    0000000   0000000   000    000    0000000   
-    # 000   000  000            000  000   000     000       
-    # 000   000  00000000  0000000   000  0000000  00000000  
-    
     onResize: => @initCanvas()        
-    
-    #  0000000   000   000  000  00     00   0000000   000000000  000   0000000   000   000  
-    # 000   000  0000  000  000  000   000  000   000     000     000  000   000  0000  000  
-    # 000000000  000 0 000  000  000000000  000000000     000     000  000   000  000 0 000  
-    # 000   000  000  0000  000  000 0 000  000   000     000     000  000   000  000  0000  
-    # 000   000  000   000  000  000   000  000   000     000     000   0000000   000   000  
     
     onAnimationFrame: =>
 
@@ -233,13 +220,15 @@ class Canvas
     
     draw: ->
         
-        @ctx.strokeStyle = '#8888'
-        @ctx.lineWidth = max 1 10*@zoom.value
+        @ctx.strokeStyle = '#4448'
+        @ctx.lineWidth = max 1 @gridSize*@zoom.value
         
-        sz = 100 * @zoom.value
+        sz = @gridSize * @zoom.value
+        sh = sz/2
         xo = @width/2-@zoom.center.x*@zoom.value
         yo = @height/2-@zoom.center.y*@zoom.value
         
+        @ctx.lineCap = "round"
         @ctx.beginPath()
         for belt in @network.belts
             @ctx.moveTo xo+belt.p1.x*sz, yo+belt.p1.y*sz
@@ -247,55 +236,55 @@ class Canvas
         @ctx.stroke()
         
         if @mousePos
-            mp = @viewToWorld @mousePos
             if @dragNode
                 @ctx.beginPath()
-                @ctx.moveTo xo+@dragNode.inp[0].p2.x*sz, yo+@dragNode.inp[0].p2.y*sz
-                @ctx.lineTo xo+mp.x*sz/100, yo+mp.y*sz/100
+                @ctx.moveTo xo+@dragNode.pos.x*sz, yo+@dragNode.pos.y*sz
+                @ctx.lineTo xo+@mousePos.x*sz, yo+@mousePos.y*sz
                 @ctx.stroke()
         
         @ctx.fillStyle = '#888'
         for node in @network.nodes
             @ctx.beginPath()
-            @ctx.arc(xo+node.inp[0].p2.x*sz, yo+node.inp[0].p2.y*sz, sz/4, 0, 2 * Math.PI, false)
+            @ctx.arc xo+node.pos.x*sz, yo+node.pos.y*sz, sz/4, 0, 2 * Math.PI, false
             @ctx.fill()     
             
         for belt in @network.belts
+            
             item = belt.head
+            p1top2 = belt.p1.to belt.p2
+            
             while item
                 @ctx.fillStyle = item.color
-                p = belt.p1.plus belt.p1.to(belt.p2).times(item.pos/belt.length)
-                
-                if item.shape == 'circle'
-                    @ctx.beginPath()
-                    @ctx.arc(xo+p.x*sz, yo+p.y*sz, sz/2, 0, 2 * Math.PI, false)
-                    @ctx.fill()     
-                else if item.shape == 'triangle'
-                    @ctx.beginPath()
-                    @ctx.moveTo xo+p.x*sz-sz/2, yo+p.y*sz+sz/2
-                    @ctx.lineTo xo+p.x*sz+sz/2, yo+p.y*sz+sz/2
-                    @ctx.lineTo xo+p.x*sz, yo+p.y*sz-sz/2
-                    @ctx.lineTo xo+p.x*sz-sz/2, yo+p.y*sz+sz/2
-                    @ctx.fill()     
-                else if item.shape == 'diamond'
-                    @ctx.beginPath()
-                    @ctx.moveTo xo+p.x*sz, yo+p.y*sz+sz/2
-                    @ctx.lineTo xo+p.x*sz+sz/2, yo+p.y*sz
-                    @ctx.lineTo xo+p.x*sz, yo+p.y*sz-sz/2
-                    @ctx.lineTo xo+p.x*sz-sz/2, yo+p.y*sz
-                    @ctx.lineTo xo+p.x*sz, yo+p.y*sz+sz/2
-                    @ctx.fill()     
+                p = belt.p1.plus p1top2.times item.pos/belt.length
+                x = xo+p.x*sz
+                y = yo+p.y*sz
+                if @zoom.value < 1
+                    @ctx.fillRect x-sh, y-sh, sz, sz
                 else
-                    @ctx.fillRect xo+p.x*sz-sz/2, yo+p.y*sz-sz/2, sz, sz
+                    if item.shape == 'circle'
+                        @ctx.beginPath()
+                        @ctx.arc    x, y, sh, 0, 2 * Math.PI, false
+                        @ctx.fill()     
+                    else if item.shape == 'triangle'
+                        @ctx.beginPath()
+                        @ctx.moveTo x-sh, y+sh
+                        @ctx.lineTo x+sh, y+sh
+                        @ctx.lineTo x,    y-sh
+                        @ctx.lineTo x-sh, y+sh
+                        @ctx.fill()     
+                    else if item.shape == 'diamond'
+                        @ctx.beginPath()
+                        @ctx.moveTo x,    y+sh
+                        @ctx.lineTo x+sh, y
+                        @ctx.lineTo x,    y-sh
+                        @ctx.lineTo x-sh, y
+                        @ctx.lineTo x,    y+sh
+                        @ctx.fill()     
+                    else
+                        @ctx.fillRect x-sh, y-sh, sz, sz
                 
                 item = item.prev
                 
-    #  0000000  000000000   0000000    0000000  000   000  
-    # 000          000     000   000  000       000   000  
-    # 0000000      000     000000000  0000000   000000000  
-    #      000     000     000   000       000  000   000  
-    # 0000000      000     000   000  0000000   000   000  
-    
     onStash: => stash = window.stash
         
     onRestore: => stash = window.stash

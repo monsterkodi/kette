@@ -154,6 +154,7 @@ class MainWin extends win
             when 'step'         then return @network.doStep = true
             when 'speed down'   then return @network.addToSpeed -1
             when 'speed up'     then return @network.addToSpeed 1
+            when 'Clear'        then return @network.clear()
             # when 'context menu' then return @canvas.showContextMenu()
             when 'new window'
                 @saveStash()
