@@ -7,6 +7,8 @@
 
 belt
     save                    cmdctrl+s
+    revert                  cmdctrl+r
+    destroy                 cmdctrl+k
     --
     new window              cmdctrl+n
     - 
@@ -24,9 +26,11 @@ belt
 build
 
     miner                   1
-    builder                 2
-    crafter                 3
-    sink                    4
+    rect                    2
+    triangle                3
+    diamond                 4
+    # crafter                 4
+    sink                    s
     red                     r
     green                   g
     blue                    b

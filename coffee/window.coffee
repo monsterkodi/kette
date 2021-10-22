@@ -51,12 +51,11 @@ class MainWin extends win
         
         post.emit 'resize'
         
-        # window.document.onmouseenter = @onMouseEnter
         window.onresize = @onResize
 
         window.addEventListener 'beforeunload' @onBeforeUnload
         
-        # @restore()
+        @restore()
         
         window.requestAnimationFrame @onAnimationFrame
            
@@ -145,6 +144,8 @@ class MainWin extends win
         
         switch action
             when 'save'         then return @saveStash()
+            when 'destroy'      then return @network.destroy()
+            when 'revert'       then return @restore()
             when 'close'        then return @win.close()            
             when 'preferences'  then return open window.stash.file
             when 'screenshot' 'preferences' 'fullscreen' 'about' 'quit' 'about' 'screenshot' 'minimize' 'maximize' 'reload' 'devTools'
@@ -160,7 +161,8 @@ class MainWin extends win
                 @saveStash()
                 return repost 'New Window' @win.id
             when 'red' 'green' 'blue' then return @network.build action, @canvas.mousePos
-            when 'miner' 'builder' 'crafter' 'sink' then return @network.build action, @canvas.mousePos
+            when 'rect' 'triangle' 'diamond' then return @network.build action, @canvas.mousePos
+            when 'miner' 'crafter' 'sink' then return @network.build action, @canvas.mousePos
         # if @canvas
             # return if 'unhandled' != @canvas.onMenuAction action, args
             

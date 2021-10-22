@@ -6,7 +6,7 @@
 000   000  00000000     000     00     00   0000000   000   000  000   000  
 ###
 
-{ clamp, kstr } = require 'kxk'
+{ clamp, klog, kpos, kstr, noon } = require 'kxk'
 { lpad, rpad, pad } = kstr
 { max, min } = Math
 
@@ -33,9 +33,10 @@ class Network
     
         newNode = @newNode pos
         building = switch type
-            when 'miner'   then new Miner   pos, newNode
-            when 'builder' then new Builder pos, newNode
-            when 'sink'    then new Sink    pos, newNode
+            when 'miner'    then new Miner   pos, newNode
+            when 'crafter'  then new Crafter pos, newNode
+            when 'sink'     then new Sink    pos, newNode
+            when 'rect' 'triangle' 'diamond' then new Shaper  pos, newNode, type
             when 'red' 'green' 'blue' then new Painter pos, newNode, type
             else null
         
@@ -83,6 +84,61 @@ class Network
             belt.head = null
             belt.tail = null
                 
+    destroy: ->
+        
+        @step  = 0
+        @epoch = 0.0
+        @belts = []
+        @nodes = []
+        @buildings = []
+        @miners = []
+            
+    #  0000000  00000000  00000000   000   0000000   000      000  0000000  00000000  
+    # 000       000       000   000  000  000   000  000      000     000   000       
+    # 0000000   0000000   0000000    000  000000000  000      000    000    0000000   
+    #      000  000       000   000  000  000   000  000      000   000     000       
+    # 0000000   00000000  000   000  000  000   000  0000000  000  0000000  00000000  
+    
+    serialize: ->
+        
+        s = noon.stringify
+            nodes: (n.data() for n in @nodes)
+                
+        klog 'serialize' s
+        s
+        
+    deserialize: (str) ->
+        
+        # klog 'deserialize' str
+        
+        @destroy()
+        
+        s = noon.parse str
+        
+        # klog 'deserialize' JSON.stringify s
+        klog 's' s
+        
+        bs = []
+        if s?.nodes
+            for n in s.nodes
+                # klog 'n' n
+                node = @newNode kpos n.x, n.y
+                if n.o?
+                    for o in n.o
+                        # klog 'ns+' o
+                        bs.push x:n.x, y:n.y, o:o
+               
+        klog 'bs' bs
+        for b in bs
+            klog b
+            belt = @addBelt b.o.s, kpos(b.x, b.y), kpos(b.o.x, b.o.y)
+            inp  = @nodeAtPos belt.p1
+            out  = @nodeAtPos belt.p2
+            belt.inp = inp
+            belt.out = out
+            inp.out.push belt
+            out.inp[b.o.i] = belt
+                
     #  0000000  000000000  00000000  00000000   
     # 000          000     000       000   000  
     # 0000000      000     0000000   00000000   
@@ -117,13 +173,13 @@ class Network
             if node.pos.dist(pos) < 0.5
                 return node
       
-    beltAtPos: (pos) ->
-        
-        for belt in @belts
-            if belt.p2.dist(pos) < 0.5
-                return belt
-            if belt.p1.dist(pos) < 0.5
-                return belt
+    # beltAtPos: (pos) ->
+#         
+        # for belt in @belts
+            # if belt.p2.dist(pos) < 0.5
+                # return belt
+            # if belt.p1.dist(pos) < 0.5
+                # return belt
                     
 # 0000000    00000000  000      000000000  
 # 000   000  000       000         000     
@@ -173,19 +229,15 @@ class Belt
         
         item.pos = 0.0
         item.prev = null
-        if not @head
-            @head = item
-        if @tail
-            @tail.prev = item
+        if not @head then @head = item
+        if @tail then @tail.prev = item
         @tail = item
         
     pop: ->
         
         item = @head
-        
         @head = item.prev
         if not @head then @tail = null
-        
         item
         
 # 000   000   0000000   0000000    00000000  
@@ -205,6 +257,21 @@ class Node
         @outidx = 0
         
         @building = null
+        
+    data: -> 
+        
+        d = 
+            x:@pos.x 
+            y:@pos.y
+        if @inp?
+            d.i = []
+            for b in @inp
+                d.i.push x:b.p1.x, y:b.p1.y, i:b.inp.out.indexOf(b), s:b.speed
+        if @out?
+            d.o = []
+            for b in @out
+                d.o.push x:b.p2.x, y:b.p2.y, i:b.out.inp.indexOf(b), s:b.speed
+        d
         
     addInp: (belt) -> @inp.push belt
     addOut: (belt) -> @out.push belt
@@ -304,9 +371,19 @@ class Painter
         
     dispatch: (belt) -> belt.head.color = @paint; false
 
-class Builder
+class Shaper
     
-    @: (@pos, @node) -> @color = '#8886'; @size = 3; @type='builder'
+    @: (@pos, @node, @shape) -> 
+    
+        @type  ='builder'
+        @color = '#8886' 
+        @size  = 3 
+    
+    dispatch: (belt) -> false
+    
+class Crafter
+    
+    @: (@pos, @node) -> @color = '#8886'; @size = 4; @type='crafter'
     
     dispatch: (belt) -> false
     

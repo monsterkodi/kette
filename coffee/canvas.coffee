@@ -6,7 +6,7 @@
  0000000  000   000  000   000      0      000   000  0000000     
 ###
 
-{ clamp, drag, elem, kpos, post, sh, stash, stopEvent } = require 'kxk'
+{ clamp, drag, elem, kpos, post, sh, stopEvent } = require 'kxk'
 { max, round } = Math
 
 Menu = require './menu'
@@ -262,13 +262,7 @@ class Canvas
                 @ctx.moveTo xo+@dragNode.pos.x*sz, yo+@dragNode.pos.y*sz
                 @ctx.lineTo xo+@mousePos.x*sz, yo+@mousePos.y*sz
                 @ctx.stroke()
-        
-        @ctx.fillStyle = '#888'
-        for node in @network.nodes
-            @ctx.beginPath()
-            @ctx.arc xo+node.pos.x*sz, yo+node.pos.y*sz, sz/4, 0, 2 * Math.PI, false
-            @ctx.fill()     
-            
+                    
         for belt in @network.belts
             
             item = belt.head
@@ -305,6 +299,12 @@ class Canvas
                         @ctx.fillRect x-sh, y-sh, sz, sz
                 
                 item = item.prev
+            
+        @ctx.fillStyle = '#888'
+        for node in @network.nodes
+            @ctx.beginPath()
+            @ctx.arc xo+node.pos.x*sz, yo+node.pos.y*sz, sz/4, 0, 2 * Math.PI, false
+            @ctx.fill()     
                 
         for building in @network.buildings
             x = xo+building.pos.x*sz
@@ -319,9 +319,13 @@ class Canvas
                 else            
                     @ctx.fillRect x-sz*building.size/2, y-sz*building.size/2, sz*building.size, sz*building.size
             
-    onStash: => stash = window.stash
+    onStash: =>
+    
+        window.stash.set 'network' @network.serialize()
         
-    onRestore: => stash = window.stash
+    onRestore: => 
+        
+        @network.deserialize window.stash.get 'network'
         
     onMenuAction: (action, args) ->
         
