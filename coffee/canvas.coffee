@@ -146,25 +146,13 @@ class Canvas
             if dropNode and not dropNode.inp
                 true
             else
-                belt = @network.addBelt 1, @dragNode.pos, gp
-                belt.inp = @dragNode
-                @dragNode.addOut belt
-                if dropNode
-                    belt.out = dropNode
-                    dropNode.addInp belt
-                else
-                    @network.addNode belt
+                out  = dropNode ? @network.newNode gp
+                belt = @network.newBelt @dragNode, out
 
         delete @dragNode
         
         @onMouseMove event
-        
-        if drag.startPos.minus(drag.lastPos).length() <= 10
-            
-            if event.button == 0
-                @popup?.close()
-                delete @popup
-            
+                    
     # 00     00   0000000   000   000   0000000  00000000  
     # 000   000  000   000  000   000  000       000       
     # 000000000  000   000  000   000  0000000   0000000   
@@ -241,7 +229,8 @@ class Canvas
     
     draw: ->
         
-        @ctx.strokeStyle = '#4448'
+        laneColor = '#222'
+        @ctx.strokeStyle = laneColor
         @ctx.lineWidth = max 1 @gridSize*@zoom.value
         
         sz = @gridSize * @zoom.value
@@ -252,8 +241,8 @@ class Canvas
         @ctx.lineCap = "round"
         @ctx.beginPath()
         for belt in @network.belts
-            @ctx.moveTo xo+belt.p1.x*sz, yo+belt.p1.y*sz
-            @ctx.lineTo xo+belt.p2.x*sz, yo+belt.p2.y*sz
+            @ctx.moveTo xo+belt.inp.pos.x*sz, yo+belt.inp.pos.y*sz
+            @ctx.lineTo xo+belt.out.pos.x*sz, yo+belt.out.pos.y*sz
         @ctx.stroke()
         
         if @mousePos
@@ -263,14 +252,20 @@ class Canvas
                 @ctx.lineTo xo+@mousePos.x*sz, yo+@mousePos.y*sz
                 @ctx.stroke()
                     
+        @ctx.fillStyle = laneColor
+        for node in @network.nodes
+            @ctx.beginPath()
+            @ctx.arc xo+node.pos.x*sz, yo+node.pos.y*sz, sz, 0, 2 * Math.PI, false
+            @ctx.fill()     
+                
         for belt in @network.belts
             
-            item = belt.head
-            p1top2 = belt.p1.to belt.p2
+            item  = belt.head
+            inOut = belt.inp.pos.to belt.out.pos
             
             while item
                 @ctx.fillStyle = item.color
-                p = belt.p1.plus p1top2.times item.pos/belt.length
+                p = belt.inp.pos.plus inOut.times item.pos/belt.length
                 x = xo+p.x*sz
                 y = yo+p.y*sz
                 if @zoom.value < 1
@@ -299,13 +294,7 @@ class Canvas
                         @ctx.fillRect x-sh, y-sh, sz, sz
                 
                 item = item.prev
-            
-        @ctx.fillStyle = '#888'
-        for node in @network.nodes
-            @ctx.beginPath()
-            @ctx.arc xo+node.pos.x*sz, yo+node.pos.y*sz, sz/4, 0, 2 * Math.PI, false
-            @ctx.fill()     
-                
+                            
         for building in @network.buildings
             x = xo+building.pos.x*sz
             y = yo+building.pos.y*sz
@@ -315,7 +304,27 @@ class Canvas
                 when 'miner' 'sink'
                     @ctx.beginPath()
                     @ctx.arc x, y, sz*building.size/2, 0, 2 * Math.PI, false
+                    @ctx.fill() 
+                when 'triangle'
+                    bh = sh*building.size
+                    @ctx.beginPath()
+                    @ctx.moveTo x-bh, y+bh
+                    @ctx.lineTo x+bh, y+bh
+                    @ctx.lineTo x,    y-bh
+                    @ctx.lineTo x-bh, y+bh
                     @ctx.fill()     
+                when 'diamond'
+                    bh = sh*building.size
+                    @ctx.beginPath()
+                    @ctx.moveTo x,    y+bh
+                    @ctx.lineTo x+bh, y
+                    @ctx.lineTo x,    y-bh
+                    @ctx.lineTo x-bh, y
+                    @ctx.lineTo x,    y+bh
+                    @ctx.fill() 
+                when 'rect'
+                    bh = sh*building.size
+                    @ctx.fillRect x-bh, y-bh, 2*bh, 2*bh
                 else            
                     @ctx.fillRect x-sz*building.size/2, y-sz*building.size/2, sz*building.size, sz*building.size
             

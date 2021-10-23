@@ -12,6 +12,7 @@ belt
     --
     new window              cmdctrl+n
     - 
+    delete                  d backspace
     clear                   k
     speed up                up
     speed down              down

@@ -143,6 +143,7 @@ class MainWin extends win
         # klog "menuAction '#{action}'" # args            
         
         switch action
+            when 'delete'       then return @network.deleteAtPos @canvas.mousePos
             when 'save'         then return @saveStash()
             when 'destroy'      then return @network.destroy()
             when 'revert'       then return @restore()
@@ -160,9 +161,9 @@ class MainWin extends win
             when 'new window'
                 @saveStash()
                 return repost 'New Window' @win.id
-            when 'red' 'green' 'blue' then return @network.build action, @canvas.mousePos
-            when 'rect' 'triangle' 'diamond' then return @network.build action, @canvas.mousePos
-            when 'miner' 'crafter' 'sink' then return @network.build action, @canvas.mousePos
+            when 'red' 'green' 'blue' then return @network.newBuilding action, @canvas.mousePos
+            when 'rect' 'triangle' 'diamond' then return @network.newBuilding action, @canvas.mousePos
+            when 'miner' 'crafter' 'sink' then return @network.newBuilding action, @canvas.mousePos
         # if @canvas
             # return if 'unhandled' != @canvas.onMenuAction action, args
             

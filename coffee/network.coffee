@@ -29,15 +29,16 @@ class Network
         @colors = ['#aaf' '#f00' '#ff0']
         @shapes = ['circle' 'rect' 'triangle' 'diamond']
         
-    build: (type, pos) -> 
+    newBuilding: (type, pos, node) -> 
     
-        newNode = @newNode pos
+        if not node then node = @newNode pos
+        
         building = switch type
-            when 'miner'    then new Miner   pos, newNode
-            when 'crafter'  then new Crafter pos, newNode
-            when 'sink'     then new Sink    pos, newNode
-            when 'rect' 'triangle' 'diamond' then new Shaper  pos, newNode, type
-            when 'red' 'green' 'blue' then new Painter pos, newNode, type
+            when 'miner'                     then new Miner   pos, node
+            when 'crafter'                   then new Crafter pos, node
+            when 'sink'                      then new Sink    pos, node
+            when 'rect' 'triangle' 'diamond' then new Shaper  pos, node, type
+            when 'red' 'green' 'blue'        then new Painter pos, node, type
             else null
         
         if building
@@ -49,9 +50,11 @@ class Network
             @buildings.push building
             building
 
-    addBelt: (speed, p1, p2) ->
+    newBelt: (inp, out) ->
         
-        belt = new Belt speed, p1, p2
+        belt = new Belt inp, out
+        inp.addOut belt
+        out.addInp belt
         belt.epoch = @epoch
         @belts.push belt
         belt
@@ -61,37 +64,46 @@ class Network
         node = new Node pos
         @nodes.push node
         node
-        
-    addNode: (belt) ->
-        
-        node = @newNode belt.p2
-        node.addInp belt
-        belt.out = node
-        node
-                
-    connect: (belt1, belt2) ->
-        
-        node = @newNode belt1.p2
-        node.addInp belt1
-        node.addOut belt2
-        belt1.out = node
-        belt2.inp = node
-        node
-                    
+                            
     clear: ->
         
         for belt in @belts
             belt.head = null
             belt.tail = null
-                
+           
+    # 0000000    00000000  000      00000000  000000000  00000000  
+    # 000   000  000       000      000          000     000       
+    # 000   000  0000000   000      0000000      000     0000000   
+    # 000   000  000       000      000          000     000       
+    # 0000000    00000000  0000000  00000000     000     00000000  
+    
+    deleteAtPos: (pos) ->
+        
+        if node = @nodeAtPos pos
+            if node.building
+                if @miners.indexOf(node.building) >= 0
+                    @miners.splice @miners.indexOf(node.building), 1
+                @buildings.splice @buildings.indexOf(node.building), 1
+                delete node.building
+                if not node.out then node.out = []
+                if not node.inp then node.inp = []
+            else
+                for b in node.out
+                    b.out.inp.splice b.out.inp.indexOf(b), 1
+                    @belts.splice @belts.indexOf(b), 1
+                for b in node.inp
+                    b.inp.out.splice b.inp.out.indexOf(b), 1
+                    @belts.splice @belts.indexOf(b), 1
+                @nodes.splice @nodes.indexOf(node), 1
+            
     destroy: ->
         
-        @step  = 0
-        @epoch = 0.0
-        @belts = []
-        @nodes = []
-        @buildings = []
-        @miners = []
+        @step       = 0
+        @epoch      = 0.0
+        @belts      = []
+        @nodes      = []
+        @buildings  = []
+        @miners     = []
             
     #  0000000  00000000  00000000   000   0000000   000      000  0000000  00000000  
     # 000       000       000   000  000  000   000  000      000     000   000       
@@ -103,41 +115,40 @@ class Network
         
         s = noon.stringify
             nodes: (n.data() for n in @nodes)
-                
+            buildings: (b.data() for b in @buildings)
         klog 'serialize' s
         s
         
     deserialize: (str) ->
         
-        # klog 'deserialize' str
-        
         @destroy()
         
         s = noon.parse str
         
-        # klog 'deserialize' JSON.stringify s
-        klog 's' s
+        klog 'deserialize' s
+        
+        return if not s?.nodes
         
         bs = []
-        if s?.nodes
-            for n in s.nodes
-                # klog 'n' n
-                node = @newNode kpos n.x, n.y
-                if n.o?
-                    for o in n.o
-                        # klog 'ns+' o
-                        bs.push x:n.x, y:n.y, o:o
+        for n in s.nodes
+            node = @newNode kpos n.x, n.y
+            if n.o?
+                for o in n.o
+                    bs.push x:n.x, y:n.y, o:o
                
-        klog 'bs' bs
         for b in bs
-            klog b
-            belt = @addBelt b.o.s, kpos(b.x, b.y), kpos(b.o.x, b.o.y)
-            inp  = @nodeAtPos belt.p1
-            out  = @nodeAtPos belt.p2
-            belt.inp = inp
-            belt.out = out
-            inp.out.push belt
-            out.inp[b.o.i] = belt
+            inp  = @nodeAtPos kpos b
+            out  = @nodeAtPos kpos b.o
+            belt = @newBelt inp, out
+            # inp.out.push belt
+            # out.inp.push belt
+            
+        for b in s.buildings
+            p = kpos b
+            @newBuilding b.t, p, @nodeAtPos p
+            
+        if @serialize() != str
+            klog 'dafuk?'
                 
     #  0000000  000000000  00000000  00000000   
     # 000          000     000       000   000  
@@ -173,14 +184,6 @@ class Network
             if node.pos.dist(pos) < 0.5
                 return node
       
-    # beltAtPos: (pos) ->
-#         
-        # for belt in @belts
-            # if belt.p2.dist(pos) < 0.5
-                # return belt
-            # if belt.p1.dist(pos) < 0.5
-                # return belt
-                    
 # 0000000    00000000  000      000000000  
 # 000   000  000       000         000     
 # 0000000    0000000   000         000     
@@ -189,15 +192,13 @@ class Network
 
 class Belt
     
-    @: (@speed, @p1, @p2) ->
+    @: (@inp, @out) ->
         
-        @length = @p1.to(@p2).length()
+        @speed  = 1
+        @length = @inp.pos.to(@out.pos).length()
         
         @head   = null
         @tail   = null
-        
-        @inp    = null
-        @out    = null
         
         @epoch  = 0
         
@@ -266,11 +267,11 @@ class Node
         if @inp?
             d.i = []
             for b in @inp
-                d.i.push x:b.p1.x, y:b.p1.y, i:b.inp.out.indexOf(b), s:b.speed
+                d.i.push x:b.inp.pos.x, y:b.inp.pos.y
         if @out?
             d.o = []
             for b in @out
-                d.o.push x:b.p2.x, y:b.p2.y, i:b.out.inp.indexOf(b), s:b.speed
+                d.o.push x:b.out.pos.x, y:b.out.pos.y
         d
         
     addInp: (belt) -> @inp.push belt
@@ -279,6 +280,8 @@ class Node
     dispatch: (belt, epoch_incr) ->
         
         if @building?.dispatch(belt) then return
+        
+        if not @out then return
         
         if @inp.length == 0 or @out.length == 0 then return
         
@@ -308,8 +311,16 @@ class Item
     
         @pos  = 0.0
         @prev = null
-             
-class Miner
+           
+class Building
+    
+    dispatch: (belt) -> false
+    data: -> 
+        t: @type
+        x: @pos.x
+        y: @pos.y
+        
+class Miner extends Building
     
     @: (@pos, @node) -> 
     
@@ -338,9 +349,7 @@ class Miner
                     belt.add item
                     return
     
-    dispatch: (belt) -> false
-
-class Sink
+class Sink extends Building
     
     @: (@pos, @node) -> 
     
@@ -355,14 +364,13 @@ class Sink
         belt.pop() 
         true
 
-class Painter
+class Painter extends Building
     
-    @: (@pos, @node, colorKey) -> 
+    @: (@pos, @node, @type) -> 
     
-        @type  ='painter'
         @size  = 2
         
-        @paint = switch colorKey
+        @paint = switch @type
             when 'red'   then '#f00'
             when 'green' then '#0f0'
             when 'blue'  then '#00f'
@@ -371,20 +379,15 @@ class Painter
         
     dispatch: (belt) -> belt.head.color = @paint; false
 
-class Shaper
+class Shaper extends Building
     
-    @: (@pos, @node, @shape) -> 
+    @: (@pos, @node, @type) -> 
     
-        @type  ='builder'
         @color = '#8886' 
         @size  = 3 
     
-    dispatch: (belt) -> false
-    
-class Crafter
+class Crafter extends Building
     
     @: (@pos, @node) -> @color = '#8886'; @size = 4; @type='crafter'
-    
-    dispatch: (belt) -> false
-    
+        
 module.exports = Network
