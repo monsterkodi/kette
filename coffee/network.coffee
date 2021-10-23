@@ -116,7 +116,6 @@ class Network
         s = noon.stringify
             nodes: (n.data() for n in @nodes)
             buildings: (b.data() for b in @buildings)
-        klog 'serialize' s
         s
         
     deserialize: (str) ->
@@ -124,8 +123,6 @@ class Network
         @destroy()
         
         s = noon.parse str
-        
-        klog 'deserialize' s
         
         return if not s?.nodes
         
@@ -140,15 +137,13 @@ class Network
             inp  = @nodeAtPos kpos b
             out  = @nodeAtPos kpos b.o
             belt = @newBelt inp, out
-            # inp.out.push belt
-            # out.inp.push belt
             
         for b in s.buildings
             p = kpos b
             @newBuilding b.t, p, @nodeAtPos p
             
         if @serialize() != str
-            klog 'dafuk?'
+            klog 'dafuk?' str, @serialize()
                 
     #  0000000  000000000  00000000  00000000   
     # 000          000     000       000   000  
@@ -264,10 +259,6 @@ class Node
         d = 
             x:@pos.x 
             y:@pos.y
-        if @inp?
-            d.i = []
-            for b in @inp
-                d.i.push x:b.inp.pos.x, y:b.inp.pos.y
         if @out?
             d.o = []
             for b in @out
