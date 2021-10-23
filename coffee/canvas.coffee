@@ -69,7 +69,7 @@ class Canvas
             onMove:  @onDragMove
             onStop:  @onDragStop
 
-    clear: -> @canvas.height = @canvas.height
+    clear: -> @ctx.clearRect 0, 0, @width, @height
                 
     # 00000000    0000000    0000000  
     # 000   000  000   000  000       
@@ -210,7 +210,7 @@ class Canvas
         
     resetZoom: =>
         
-        @zoom.value = 1
+        @zoom.value    = 2
         @zoom.center.x = 0
         @zoom.center.y = 0
         

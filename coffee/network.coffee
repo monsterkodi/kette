@@ -31,8 +31,14 @@ class Network
         
     newBuilding: (type, pos, node) -> 
     
-        if not node then node = @newNode pos
+        if not node then node = @nodeAtPos pos
         
+        if node 
+            if node.building
+                @deleteAtPos pos
+        else
+            node = @newNode pos
+                
         building = switch type
             when 'miner'                     then new Miner   pos, node
             when 'crafter'                   then new Crafter pos, node
@@ -70,6 +76,9 @@ class Network
         for belt in @belts
             belt.head = null
             belt.tail = null
+            
+        for node in @nodes
+            node.queue = []
            
     # 0000000    00000000  000      00000000  000000000  00000000  
     # 000   000  000       000      000          000     000       
@@ -246,8 +255,9 @@ class Node
     
     @: (@pos) ->
         
-        @inp = []
-        @out = []
+        @inp   = []
+        @out   = []
+        @queue = []
         
         @inpidx = 0
         @outidx = 0
@@ -281,14 +291,17 @@ class Node
         out = @out[@outidx]
 
         if (not out.tail) or out.tail.pos >= 1
-            tailRoom = if out.tail then out.tail.pos-1 else out.length
-            epoch_fact = 1.0 - ((belt.length - belt.head.pos) / (epoch_incr))
-            epoch_rest = epoch_incr * epoch_fact
-            out.add belt.pop()
-            if belt.epoch < out.epoch
-                out.tail.pos += max 0 min out.speed * epoch_rest, tailRoom
-                
-            return
+            if @queue.length == 0 or @queue[0] == belt
+                tailRoom = if out.tail then out.tail.pos-1 else out.length
+                epoch_fact = 1.0 - ((belt.length - belt.head.pos) / (epoch_incr))
+                epoch_rest = epoch_incr * epoch_fact
+                out.add belt.pop()
+                if belt.epoch < out.epoch or epoch_rest == epoch_incr
+                    out.tail.pos += max 0 min out.speed * epoch_rest, tailRoom
+                if @queue[0] == belt then @queue.shift()
+                return
+        if belt not in @queue
+            @queue.push belt
     
 # 000  000000000  00000000  00     00  
 # 000     000     000       000   000  

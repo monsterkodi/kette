@@ -6,7 +6,7 @@
 00     00  000  000   000  0000000     0000000   00     00
 ###
 
-{ $, args, kerror, keyinfo, klog, open, post, stash, win } = require 'kxk'
+{ $, args, kerror, keyinfo, klog, kpos, open, post, stash, win } = require 'kxk'
 
 electron = require 'electron'
 Canvas  = require './canvas'
@@ -59,13 +59,11 @@ class MainWin extends win
         
         window.requestAnimationFrame @onAnimationFrame
            
-    onFocus: => #@canvas.setWinFocus true
-    onBlur:  => #@canvas.setWinFocus false
+    onFocus: => 
+    onBlur:  => 
     onMouseEnter: => 
-        #@win.focus()
-        #@canvas?.canvas?.focus()
         
-    onAnimationFrame: =>
+    onAnimationFrame: (timestamp) =>
 
         @network.onAnimationFrame()
         @canvas.onAnimationFrame()
@@ -145,7 +143,7 @@ class MainWin extends win
         switch action
             when 'delete'       then return @network.deleteAtPos @canvas.mousePos
             when 'save'         then return @saveStash()
-            when 'destroy'      then return @network.destroy()
+            when 'destroy'      then @network.destroy(); @canvas.resetZoom(); return @network.newBuilding 'miner' kpos 0 0
             when 'revert'       then return @restore()
             when 'close'        then return @win.close()            
             when 'preferences'  then return open window.stash.file
