@@ -214,11 +214,11 @@ class Belt
             
             headPos = @head.pos + @speed * epoch_incr
             
-            if @out and headPos >= @length
+            if @out and headPos >= @length-1
                 @out.dispatch @, epoch_incr
                 if not @head then return
                     
-            headRoom = @length - @head.pos
+            headRoom = @length - 1 - @head.pos
             
             headMove = max 0 min @speed * epoch_incr, headRoom
             @head.pos += headMove
@@ -280,24 +280,25 @@ class Node
     
     dispatch: (belt, epoch_incr) ->
         
-        if @building?.dispatch(belt) then return
+        return if @building?.dispatch(belt)
         
-        if not @out then return
+        return if not @out
         
-        if @inp.length == 0 or @out.length == 0 then return
+        return if @inp.length == 0 or @out.length == 0  
         
         @outidx += 1
         @outidx %= @out.length
         out = @out[@outidx]
 
-        if (not out.tail) or out.tail.pos >= 1
-            if @queue.length == 0 or @queue[0] == belt
-                tailRoom = if out.tail then out.tail.pos-1 else out.length
-                epoch_fact = 1.0 - ((belt.length - belt.head.pos) / (epoch_incr))
-                epoch_rest = epoch_incr * epoch_fact
+        if @queue.length == 0 or @queue[0] == belt
+            tailRoom = if out.tail then out.tail.pos-1 else out.length
+            headRoom = belt.length - belt.head.pos  
+            headRoom += tailRoom
+            belt.head.pos += max 0 min belt.speed * epoch_incr, headRoom
+            if belt.head.pos >= belt.length
                 out.add belt.pop()
-                if belt.epoch < out.epoch or epoch_rest == epoch_incr
-                    out.tail.pos += max 0 min out.speed * epoch_rest, tailRoom
+                if belt.epoch < out.epoch
+                    out.tail.pos += max 0 belt.speed * epoch_incr - headMove
                 if @queue[0] == belt then @queue.shift()
                 return
         if belt not in @queue
@@ -379,7 +380,7 @@ class Painter extends Building
             when 'green' then '#0f0'
             when 'blue'  then '#00f'
     
-        @color = @paint + '6'
+        @color = @paint + 'a'
         
     dispatch: (belt) -> belt.head.color = @paint; false
 

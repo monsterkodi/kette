@@ -254,9 +254,10 @@ class Canvas
                     
         @ctx.fillStyle = laneColor
         for node in @network.nodes
-            @ctx.beginPath()
-            @ctx.arc xo+node.pos.x*sz, yo+node.pos.y*sz, sz, 0, 2 * Math.PI, false
-            @ctx.fill()     
+            if not node.building
+                @ctx.beginPath()
+                @ctx.arc xo+node.pos.x*sz, yo+node.pos.y*sz, sz, 0, 2 * Math.PI, false
+                @ctx.fill()     
                 
         for belt in @network.belts
             
@@ -301,7 +302,7 @@ class Canvas
             @ctx.fillStyle = building.color
             
             switch building.type
-                when 'miner' 'sink'
+                when 'miner' 'sink' 'red' 'green' 'blue'
                     @ctx.beginPath()
                     @ctx.arc x, y, sz*building.size/2, 0, 2 * Math.PI, false
                     @ctx.fill() 
