@@ -286,16 +286,20 @@ class Node
         
         return if @inp.length == 0 or @out.length == 0  
         
-        @outidx += 1
-        @outidx %= @out.length
-        out = @out[@outidx]
-
+        minTailRoom = Infinity
+        for out in @out
+            minTailRoom = min minTailRoom, if out.tail then out.tail.pos-1 else out.length
+        
         if @queue.length == 0 or @queue[0] == belt
-            tailRoom = if out.tail then out.tail.pos-1 else out.length
             headRoom = belt.length - belt.head.pos  
-            headRoom += tailRoom
+            headRoom += minTailRoom
             belt.head.pos += max 0 min belt.speed * epoch_incr, headRoom
             if belt.head.pos >= belt.length
+                
+                @outidx += 1
+                @outidx %= @out.length
+                out = @out[@outidx]
+                
                 out.add belt.pop()
                 if belt.epoch < out.epoch
                     out.tail.pos += max 0 belt.speed * epoch_incr - headMove
