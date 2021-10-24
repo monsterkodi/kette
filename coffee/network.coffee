@@ -198,7 +198,6 @@ class Belt
     
     @: (@inp, @out) ->
         
-        @speed  = 1
         @length = @inp.pos.to(@out.pos).length()
         
         @head   = null
@@ -212,7 +211,7 @@ class Belt
         
         if @head
             
-            headPos = @head.pos + @speed * epoch_incr
+            headPos = @head.pos + epoch_incr
             
             if @out and headPos >= @length-1
                 @out.dispatch @, epoch_incr
@@ -220,13 +219,13 @@ class Belt
                     
             headRoom = @length - 1 - @head.pos
             
-            headMove = max 0 min @speed * epoch_incr, headRoom
+            headMove = max 0 min epoch_incr, headRoom
             @head.pos += headMove
             
             item = @head
             while prev = item.prev
                 itemRoom = item.pos - 1 - prev.pos
-                prevMove = max 0 min @speed * epoch_incr, itemRoom
+                prevMove = max 0 min epoch_incr, itemRoom
                 prev.pos += prevMove
                 item = prev
                 
@@ -293,7 +292,7 @@ class Node
         if @queue.length == 0 or @queue[0] == belt
             headRoom = belt.length - belt.head.pos  
             headRoom += minTailRoom
-            belt.head.pos += max 0 min belt.speed * epoch_incr, headRoom
+            belt.head.pos += max 0 min epoch_incr, headRoom
             if belt.head.pos >= belt.length
                 
                 @outidx += 1
@@ -302,7 +301,7 @@ class Node
                 
                 out.add belt.pop()
                 if belt.epoch < out.epoch
-                    out.tail.pos += max 0 belt.speed * epoch_incr - headMove
+                    out.tail.pos += max 0 epoch_incr - headMove
                 if @queue[0] == belt then @queue.shift()
                 return
         if belt not in @queue
