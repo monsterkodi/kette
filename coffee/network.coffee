@@ -14,20 +14,15 @@ class Network
 
     @: -> 
         
-        @pause = false
-        @step  = 0
-        @speed = 1
-        @epoch = 0.0
+        @pause      = false
+        @step       = 0
+        @speed      = 1
+        @epoch      = 0.0
         @epoch_incr = 0.1
-        @belts = []
-        @nodes = []
-        @buildings = []
-        @miners = []
-        
-        @colidx = 0
-        @shapeidx = 0
-        @colors = ['#aaf' '#f00' '#ff0']
-        @shapes = ['circle' 'rect' 'triangle' 'diamond']
+        @belts      = []
+        @nodes      = []
+        @buildings  = []
+        @miners     = []
         
     newBuilding: (type, pos, node) -> 
     
@@ -279,7 +274,7 @@ class Node
     
     dispatch: (belt, epoch_incr) ->
         
-        return if @building?.dispatch(belt)
+        return if @building?.dispatch belt
         
         return if not @out
         
@@ -299,11 +294,20 @@ class Node
                 @outidx %= @out.length
                 out = @out[@outidx]
                 
+                for oi in 0...@out.length
+                    if not out.tail or out.tail.pos >= 2
+                        break
+                    else
+                        @outidx += 1
+                        @outidx %= @out.length
+                        out = @out[@outidx]
+                
                 out.add belt.pop()
                 if belt.epoch < out.epoch
                     out.tail.pos += max 0 epoch_incr - headMove
                 if @queue[0] == belt then @queue.shift()
                 return
+                
         if belt not in @queue
             @queue.push belt
     
@@ -385,14 +389,43 @@ class Painter extends Building
     
         @color = @paint + 'a'
         
-    dispatch: (belt) -> belt.head.color = @paint; false
+    dispatch: (belt) -> 
+    
+        if belt.head.pos >= belt.length-0.1
+            belt.head.color = @paint
+            
+        false
 
 class Shaper extends Building
     
     @: (@pos, @node, @type) -> 
     
-        @color = '#8886' 
-        @size  = 3 
+        @color = '#fff' 
+        @size  = 3
+        @batch = []
+        
+        @input = switch @type
+            when 'diamond'  then 'circle'
+            when 'triangle' then 'diamond'
+            when 'rect'     then 'triangle'
+            
+        @munch = switch @type
+            when 'diamond'  then '2'
+            when 'triangle' then '3'
+            when 'rect'     then '4'
+        
+    dispatch: (belt) -> 
+    
+        @node.queue = []
+        if belt.head.shape == @input
+        
+            if belt.head.pos >= belt.length-0.1
+                if @batch.length < @munch-1
+                    @batch.push belt.pop() 
+                else            
+                    belt.head.shape = @type 
+                    @batch = []
+        false
     
 class Crafter extends Building
     

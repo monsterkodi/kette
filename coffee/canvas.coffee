@@ -309,10 +309,10 @@ class Canvas
                 when 'triangle'
                     bh = sh*building.size
                     @ctx.beginPath()
-                    @ctx.moveTo x-bh, y+bh
-                    @ctx.lineTo x+bh, y+bh
-                    @ctx.lineTo x,    y-bh
-                    @ctx.lineTo x-bh, y+bh
+                    @ctx.moveTo x-bh, y-sh/2+bh
+                    @ctx.lineTo x+bh, y-sh/2+bh
+                    @ctx.lineTo x,    y-sh/2-bh
+                    @ctx.lineTo x-bh, y-sh/2+bh
                     @ctx.fill()     
                 when 'diamond'
                     bh = sh*building.size

@@ -27,10 +27,10 @@ belt
 build
 
     miner                   1
-    rect                    2
+    diamond                 2
     triangle                3
-    diamond                 4
-    # crafter                 4
+    rect                    4
+    crafter                 5
     sink                    s
     red                     r
     green                   g
