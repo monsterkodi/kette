@@ -114,5 +114,7 @@ class Main extends app
         # klog 'onMenuAction' action, arg
         switch action
             when 'New Window' then return @cloneWinWithId arg
+            
+        super
         
 new Main

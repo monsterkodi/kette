@@ -6,7 +6,7 @@
 000   000  00000000     000     00     00   0000000   000   000  000   000  
 ###
 
-{ clamp, klog, kpos, kstr, noon } = require 'kxk'
+{ clamp, empty, klog, kpos, kstr, noon } = require 'kxk'
 { lpad, rpad, pad } = kstr
 { max, min } = Math
 
@@ -179,6 +179,7 @@ class Network
     
     nodeAtPos: (pos) ->
         
+        return if empty @nodes
         for node in @nodes
             if node.pos.dist(pos) < 0.5
                 return node
@@ -274,6 +275,8 @@ class Node
     
     dispatch: (belt, epoch_incr) ->
         
+        return if not belt
+        
         return if @building?.dispatch belt
         
         return if not @out
@@ -285,6 +288,7 @@ class Node
             minTailRoom = min minTailRoom, if out.tail then out.tail.pos-1 else out.length
         
         if @queue.length == 0 or @queue[0] == belt
+            return if not belt.head
             headRoom = belt.length - belt.head.pos  
             headRoom += minTailRoom
             belt.head.pos += max 0 min epoch_incr, headRoom

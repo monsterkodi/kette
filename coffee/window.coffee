@@ -6,9 +6,8 @@
 00     00  000  000   000  0000000     0000000   00     00
 ###
 
-{ $, args, kerror, keyinfo, klog, kpos, open, post, stash, win } = require 'kxk'
+{ $, args, kerror, keyinfo, klog, kpos, post, stash, win } = require 'kxk'
 
-electron = require 'electron'
 Canvas  = require './canvas'
 Network = require './network'
 
@@ -27,10 +26,10 @@ class MainWin extends win
         post.on 'alert' (msg) -> window.alert(msg); kerror msg
         post.on 'saveStash'   @saveStash
         
-        # @win.setHasShadow false    
-        
-        window.stash = new stash "win/#{@win.id}" separator:'|'
+        window.stash = new stash "win/#{@id}" separator:'|'
         post.setMaxListeners 20
+        
+        window.onload = @onLoad
                                     
     # 000       0000000    0000000   0000000    
     # 000      000   000  000   000  000   000  
@@ -40,14 +39,16 @@ class MainWin extends win
     
     onLoad: =>
         
+        klog 'onLoad'
+        
         @main  =$ '#main'
         @network = new Network()
         @canvas = new Canvas @main, @network
         
-        @win.on 'focus'     @onFocus
-        @win.on 'blur'      @onBlur
-        @win.on 'close'     @onClose
-        @win.on 'move'      @onMove
+        # @win.on 'focus'     @onFocus
+        # @win.on 'blur'      @onBlur
+        # @win.on 'close'     @onClose
+        # @win.on 'move'      @onMove
         
         post.emit 'resize'
         
@@ -69,32 +70,26 @@ class MainWin extends win
         @canvas.onAnimationFrame()
         window.requestAnimationFrame @onAnimationFrame
 
-    onMove: => window.stash.set 'bounds' @win.getBounds()
+    onMove: => window.stash.set 'bounds' @getBounds()
     
     onResize: =>
         
-        window.stash.set 'bounds' @win.getBounds()
+        window.stash.set 'bounds' @getBounds()
         post.emit 'resize'
         
     clearListeners: ->
-    
-        @win.removeListener 'resize' @onResize
-        @win.removeListener 'focus'  @onFocus
-        @win.removeListener 'blur'   @onBlur
-        @win.removeListener 'close'  @onClose
-        @win.removeListener 'move'   @onMove
-        
+            
         window.document.onmouseenter = null
         window.removeEventListener 'beforeunload' @onBeforeUnload
 
     onBeforeUnload: (event) => @clearListeners()
     
-    onClose: =>
-    
-        if electron.remote.BrowserWindow.getAllWindows().length > 1
-            window.stash.clear()
-            
-        @clearListeners()
+    # onClose: =>
+#     
+        # if electron.remote.BrowserWindow.getAllWindows().length > 1
+            # window.stash.clear()
+#             
+        # @clearListeners()
         
     # 00000000   00000000   0000000  000000000   0000000   00000000   00000000  
     # 000   000  000       000          000     000   000  000   000  000       
@@ -105,13 +100,13 @@ class MainWin extends win
     restore: =>
     
         if bounds = window.stash.get 'bounds'
-            @win.setBounds bounds
+            @setBounds bounds
     
         post.emit 'restore'
    
     saveStash: =>
     
-        window.stash.set 'bounds' @win.getBounds()
+        window.stash.set 'bounds' @getBounds()
         post.emit 'stash'
         window.stash.save()
         post.toMain 'stashSaved'
@@ -136,34 +131,25 @@ class MainWin extends win
     
     onMenuAction: (action, args) =>
                
-        repost = (cmd,args) -> post.emit 'menuAction' cmd, args
-        
-        # klog "menuAction '#{action}'" # args            
-        
-        switch action
+        switch action.toLowerCase()
             when 'delete'       then return @network.deleteAtPos @canvas.mousePos
             when 'save'         then return @saveStash()
             when 'destroy'      then @network.destroy(); @canvas.resetZoom(); return @network.newBuilding 'miner' kpos 0 0
             when 'revert'       then return @restore()
-            when 'close'        then return @win.close()            
-            when 'preferences'  then return open window.stash.file
-            when 'screenshot' 'preferences' 'fullscreen' 'about' 'quit' 'about' 'screenshot' 'minimize' 'maximize' 'reload' 'devTools'
-                return repost action[0].toUpperCase() + action[1..-1], args 
-            when 'toggle menu'  then return repost 'Toggle Menu' args
             when 'pause'        then return @network.togglePause()
             when 'step'         then return @network.doStep = true
             when 'speed down'   then return @network.addToSpeed -1
             when 'speed up'     then return @network.addToSpeed 1
             when 'clear'        then return @network.clear()
-            # when 'context menu' then return @canvas.showContextMenu()
             when 'new window'
                 @saveStash()
-                return repost 'New Window' @win.id
+                return repost 'New Window' @id
             when 'red' 'green' 'blue' then return @network.newBuilding action, @canvas.mousePos
             when 'rect' 'triangle' 'diamond' then return @network.newBuilding action, @canvas.mousePos
             when 'miner' 'crafter' 'sink' then return @network.newBuilding action, @canvas.mousePos
-        # if @canvas
-            # return if 'unhandled' != @canvas.onMenuAction action, args
+            
+        if @canvas
+            return if 'unhandled' != @canvas.onMenuAction action, args
             
         klog "menuAction '#{action}'" # args     
         super
