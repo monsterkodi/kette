@@ -39,8 +39,6 @@ class MainWin extends win
     
     onLoad: =>
         
-        klog 'onLoad'
-        
         @main  =$ '#main'
         @network = new Network()
         @canvas = new Canvas @main, @network
@@ -153,5 +151,5 @@ class MainWin extends win
             
         klog "menuAction '#{action}'" # args     
         super
-                      
+           
 new MainWin            

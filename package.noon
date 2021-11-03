@@ -8,7 +8,7 @@ build
                 mac
                   icon  img/app.icns
 dependencies
-                kxk  ^0.417.0
+                kxk  ^0.418.0
 devDependencies
                 electron        ^15.3.0
                 electron-builder  ^22.13.1

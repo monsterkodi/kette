@@ -7,7 +7,9 @@
 ###
 
 { app, empty, filelist, fs, post, slash, win } = require 'kxk'
+
 { BrowserWindow } = require 'electron'
+    
 { abs } = Math
 
 wins = -> BrowserWindow.getAllWindows().sort (a,b) -> a.id - b.id
@@ -37,6 +39,7 @@ class Main extends app
         @app.on 'window-all-closed' (event) => @exitApp()
         
         @moveWindowStashes()
+        
         post.on 'menuAction' @onMenuAction
         
     onShow: => @restoreWindows()
@@ -67,7 +70,6 @@ class Main extends app
     # 000   000  00000000  0000000      000      0000000   000   000  00000000
 
     moveWindowStashes: ->
-        
         winDir = slash.join @userData, 'win'
         oldDir = slash.join @userData, 'old'
         if slash.dirExists winDir
@@ -81,13 +83,15 @@ class Main extends app
         stashFiles = filelist oldDir, matchExt:'noon'
         
         if empty stashFiles
-            @createWindow()
+            win = @createWindow @onWinReady
         else
             for file in stashFiles
-                win = @createWindow()
+                win = @createWindow @onWinReady
                 newStash = slash.join winDir, "#{win.id}.noon"
                 fs.copySync file, newStash
             fs.remove oldDir, ->
+                    
+    onWinReady: (win) => 
             
     #  0000000  000       0000000   000   000  00000000  
     # 000       000      000   000  0000  000  000       
@@ -116,5 +120,5 @@ class Main extends app
             when 'New Window' then return @cloneWinWithId arg
             
         super
-        
+
 new Main
