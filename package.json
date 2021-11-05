@@ -11,7 +11,7 @@
     }
   },
   "dependencies": {
-    "kxk": "^0.418.0"
+    "kxk": "^0.420.0"
   },
   "devDependencies": {
     "electron": "^15.3.0",
